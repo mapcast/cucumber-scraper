@@ -115,8 +115,14 @@ public class WebScrappingScheduler {
             		List<WebElement> horseDatas = horse.findElements(By.cssSelector("td"));
             		for(int i = 0; i < horseDatas.size(); i++) {
             			switch(i) {
-                			case 0: break;
-                			case 1: break;
+                			case 0: 
+                				if(horseDatas.get(i).findElements(By.cssSelector("div")).size() > 0) 
+                					System.out.println("와꾸: " + horseDatas.get(i).findElement(By.cssSelector("div")).getText());
+                				break;
+                			case 1: 
+                				if(horseDatas.get(i).findElements(By.cssSelector("div")).size() > 0) 
+                					System.out.println("마번: " + horseDatas.get(i).findElement(By.cssSelector("div")).getText());
+                				break;
                 			case 3: 
                 				WebElement horseName = horseDatas.get(i).findElement(By.cssSelector("a"));
                 				System.out.println("출주마 정보 링크: " + horseName.getAttribute("href"));
@@ -137,7 +143,8 @@ public class WebScrappingScheduler {
                 				System.out.println("구사: " + home.findElement(By.cssSelector("a")).getText());
                 				break;
                 			case 8: 
-                				//System.out.println("마체중: " + horseDatas.get(j).getText());
+                				System.out.println("마체중: " + horseDatas.get(i).getText());
+                				System.out.println("증감: " + horseDatas.get(i).findElement(By.cssSelector("small")).getText());
                 				break;
                 			case 9: 
                 				System.out.println("예상배당: " + horseDatas.get(i).findElement(By.cssSelector("span")).getText());
@@ -150,18 +157,94 @@ public class WebScrappingScheduler {
             		}
             	}
             	Thread.sleep(3000);
-            	/*
-            	System.out.println("레이스 수: " + raceMap.get(firstRaceLink));
-                for(int i = 1; i <= 12; i++) {
-                	String raceNumber = Integer.toString(i);
-                	if(raceNumber.length() == 1) raceNumber = "0" + raceNumber;
-                    String modified = firstRaceLink.substring(0, firstRaceLink.length() - 15) + raceNumber + "&rf=race_list";
-                	driver.navigate().to(modified);
-                }
-                */
             }
             
             
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
+        driver.close();	//탭 닫기
+        driver.quit();	//브라우저 닫기
+	}
+	
+	@Scheduled(cron = "0 27 22 * * *")
+	public void syncHorseDataDetail() {
+		WebDriver driver = scrapperUtil.getChromeDriver();
+		try {
+        	driver.get("https://db.netkeiba.com/horse/2012102013/");
+            Thread.sleep(3000); //브라우저 로딩될때까지 잠시 기다린다.
+            
+            //경주마 프로필
+            WebElement horseTitle = driver.findElement(By.cssSelector(".horse_title"));
+            System.out.println("영문명: " + horseTitle.findElement(By.cssSelector(".eng_name a")).getText());
+            String[] horseBaseDatas = horseTitle.findElement(By.cssSelector(".txt_01")).getText().split("　");
+            System.out.println("등록 상태: " + horseBaseDatas[0]);
+            System.out.println("성별/나이: " + horseBaseDatas[1]);
+            System.out.println("모색: " + horseBaseDatas[2]);
+            
+            List<WebElement> horseProperties = driver.findElements(By.cssSelector(".db_prof_table tbody tr"));
+            System.out.println("생년월일: " + horseProperties.get(0).findElement(By.cssSelector("td")).getText()); 	
+            System.out.println("산지: " + horseProperties.get(4).findElement(By.cssSelector("td")).getText());
+            System.out.println("경매가: " + horseProperties.get(5).findElement(By.cssSelector("td")).getText());
+            System.out.println("수득상금: " + horseProperties.get(6).findElement(By.cssSelector("td")).getText());
+            System.out.println("전적: " + horseProperties.get(7).findElement(By.cssSelector("td")).getText().replace("[", "").replace("]", ""));
+            System.out.println("전적(착순): " + horseProperties.get(7).findElement(By.cssSelector("td a")).getText());
+            
+            //출주 기록
+            List<WebElement> raceResults = driver.findElements(By.cssSelector(".db_h_race_results tbody tr"));
+            for(WebElement raceResult : raceResults) {
+            	List<WebElement> raceResultProperties = raceResult.findElements(By.cssSelector("td"));
+            	System.out.println("경기개최일: " + raceResultProperties.get(0).findElement(By.cssSelector("a")).getText()); 
+                System.out.println("경마장: " + raceResultProperties.get(1).findElement(By.cssSelector("a")).getText()); 
+                System.out.println("날씨: " + raceResultProperties.get(2).getText()); 
+                System.out.println("라운드: " + raceResultProperties.get(3).getText()); 
+                System.out.println("경주명: " + raceResultProperties.get(4).getText()); 
+                System.out.println("두수: " + raceResultProperties.get(6).getText()); 
+                System.out.println("와꾸: " + raceResultProperties.get(7).getText()); 
+                System.out.println("마번: " + raceResultProperties.get(8).getText()); 
+                System.out.println("배당: " + raceResultProperties.get(9).getText()); 
+                System.out.println("인기: " + raceResultProperties.get(10).getText()); 
+                System.out.println("착순: " + raceResultProperties.get(11).getText()); 
+                System.out.println("기수: " + raceResultProperties.get(12).findElement(By.cssSelector("a")).getText()); 
+                System.out.println("근량: " + raceResultProperties.get(13).getText()); 
+                System.out.println("마장종류/거리: " + raceResultProperties.get(14).getText()); 
+                System.out.println("마장상태: " + raceResultProperties.get(15).getText()); 
+                System.out.println("기록: " + raceResultProperties.get(17).getText()); 
+                System.out.println("착차: " + raceResultProperties.get(18).getText()); 
+                System.out.println("코너통과순위: " + raceResultProperties.get(20).getText()); 
+                System.out.println("라스트3F: " + raceResultProperties.get(22).getText()); 
+                System.out.println("마체중: " + raceResultProperties.get(23).getText()); 
+                System.out.println("우승마(2착마): " + raceResultProperties.get(26).findElement(By.cssSelector("a")).getText()); 
+            }
+            
+            
+            //혈통표
+            /*
+            driver.navigate().to("https://db.netkeiba.com/horse/ped/2012102013/");
+            Thread.sleep(3000);
+            List<WebElement> bloodLine = driver.findElements(By.cssSelector(".blood_table tr"));
+            
+            List<WebElement> maleLine1 = bloodLine.get(0).findElements(By.cssSelector(".b_ml"));
+            System.out.println("부: " + maleLine1.get(0).findElements(By.cssSelector("a")).get(0).getText());
+            System.out.println("조부: " + maleLine1.get(1).findElements(By.cssSelector("a")).get(0).getText()); 	
+            System.out.println("증조부1: " + maleLine1.get(2).findElements(By.cssSelector("a")).get(0).getText()); 	
+            
+            System.out.println("증조모1: " + bloodLine.get(4).findElements(By.cssSelector(".b_fml")).get(0).findElements(By.cssSelector("a")).get(0).getText());
+            System.out.println("조모: " + bloodLine.get(8).findElements(By.cssSelector(".b_fml")).get(0).findElements(By.cssSelector("a")).get(0).getText());
+            System.out.println("증조부2: " + bloodLine.get(8).findElements(By.cssSelector(".b_ml")).get(0).findElements(By.cssSelector("a")).get(0).getText()); 	
+            System.out.println("증조모2: " + bloodLine.get(12).findElements(By.cssSelector(".b_fml")).get(0).findElements(By.cssSelector("a")).get(0).getText()); 	
+            
+            System.out.println("모: " + bloodLine.get(16).findElements(By.cssSelector(".b_fml")).get(0).findElements(By.cssSelector("a")).get(0).getText());
+            List<WebElement> maleLine2 = bloodLine.get(16).findElements(By.cssSelector(".b_ml"));
+            System.out.println("외조부: " + maleLine2.get(0).findElements(By.cssSelector("a")).get(0).getText()); 	
+            System.out.println("외증조부1: " + maleLine2.get(1).findElements(By.cssSelector("a")).get(0).getText()); 	
+            
+            System.out.println("외증조모1: " + bloodLine.get(20).findElements(By.cssSelector(".b_fml")).get(0).findElements(By.cssSelector("a")).get(0).getText());
+            System.out.println("외조모: " + bloodLine.get(24).findElements(By.cssSelector(".b_fml")).get(0).findElements(By.cssSelector("a")).get(0).getText());
+            System.out.println("외증조부2: " + bloodLine.get(24).findElements(By.cssSelector(".b_ml")).get(0).findElements(By.cssSelector("a")).get(0).getText()); 	
+            System.out.println("외증조모2: " + bloodLine.get(28).findElements(By.cssSelector(".b_fml")).get(0).findElements(By.cssSelector("a")).get(0).getText()); 
+            */
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
