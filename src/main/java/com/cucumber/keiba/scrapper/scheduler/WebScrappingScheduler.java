@@ -33,7 +33,7 @@ public class WebScrappingScheduler {
 	}
 	
 	@Scheduled(cron = "0 11 22 * * *")
-	public void syncEventsInplay() {
+	public void syncUpcomingRaces() {
 		WebDriver driver = scrapperUtil.getChromeDriver();
 		try {
         	driver.get("https://race.netkeiba.com/top/race_list.html?kaisai_date=20230806");
@@ -199,8 +199,196 @@ public class WebScrappingScheduler {
             	
             	
             	Thread.sleep(3000);
-            	break;
             }
+            
+            
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
+        driver.close();	//탭 닫기
+        driver.quit();	//브라우저 닫기
+	}
+	
+	@Scheduled(cron = "0 29 20 * * *")
+	public void syncEndedRace() {
+		WebDriver driver = scrapperUtil.getChromeDriver();
+		try {
+        	driver.get("https://race.netkeiba.com/race/result.html?race_id=202301010611");
+            Thread.sleep(3000); //브라우저 로딩될때까지 잠시 기다린다.
+        	
+        	//레이스 정보 스크래핑
+        	WebElement raceNameAndGrade = driver.findElement(By.cssSelector(".RaceName"));
+        	System.out.println("레이스 명: " + 
+        			translateService.translate(TranslateDataType.RACE, raceNameAndGrade.getText().replace("\"", "")
+    					.replace("歳", "세 ")
+						.replace("新馬", "신마전")
+						.replace("未勝利", "미승리전")
+						.replace("オープン", "오픈")
+    					.replace("勝クラス", "승 클래스")
+    					.replace("万下", "만엔 이하"), true));
+        	
+        	
+        	if(raceNameAndGrade.findElements(By.cssSelector("span")).size() > 0) {
+        		String gradeIconClasses = raceNameAndGrade.findElement(By.cssSelector("span")).getAttribute("class");
+        		if(gradeIconClasses.contains("Icon_GradeType18")) {
+        			System.out.println("그레이드: 1승 클래스");
+            	} else if(gradeIconClasses.contains("Icon_GradeType17")) {
+            		System.out.println("그레이드: 2승 클래스");
+            	} else if(gradeIconClasses.contains("Icon_GradeType16")) {
+            		System.out.println("그레이드: 3승 클래스");
+            	} else if(gradeIconClasses.contains("Icon_GradeType15")) {
+            		System.out.println("그레이드: 리스티드");
+            	} else if(gradeIconClasses.contains("Icon_GradeType5")) {
+            		System.out.println("그레이드: 오픈");
+            	} else if(gradeIconClasses.contains("Icon_GradeType3")) {
+            		System.out.println("그레이드: G3");
+            	} else if(gradeIconClasses.contains("Icon_GradeType2")) {
+            		System.out.println("그레이드: G2");
+            	} else if(gradeIconClasses.contains("Icon_GradeType1")) {
+            		System.out.println("그레이드: G1");
+            	}
+        	}
+        	
+        	WebElement raceDataLine1 = driver.findElement(By.cssSelector(".RaceData01"));
+        	for(String raceData : raceDataLine1.getText().split(" ")) {
+        		if(raceData.contains("発走")) {
+        			System.out.println("시작 시간: " + raceData.replace("発走", ""));
+        		} else if(raceData.contains("m")) {
+        			System.out.println("마장: " + translateService.translate(TranslateDataType.TRACK, raceData.replaceAll("[0-9]", "").replace("m", ""), false));
+                	System.out.println("거리: " + raceData.replaceAll("[^0-9]", ""));
+        		} else if(raceData.contains("天候:")) {
+        			System.out.println("날씨: " + translateService.translate(TranslateDataType.WEATHER, raceData.replace("天候:", ""), false));
+        		} else if(raceData.contains("馬場:")) {
+        			System.out.println("상태: " + translateService.translate(TranslateDataType.CONDITION, raceData.replace("馬場:", ""), false));
+        		}
+        	}
+        	/*
+        	String startTime = raceDataLine1.getText();
+        	startTime = startTime.substring(0, startTime.indexOf("発走"));
+        	
+        	System.out.println("마장: " + translateService.translate(TranslateDataType.TRACK, raceSpecs.replaceAll("[0-9]", "").replace("m", ""), false));
+        	System.out.println("거리: " + raceSpecs.replaceAll("[^0-9]", ""));
+        	*/
+        	
+        	List<WebElement> raceDataLine2Spans = driver.findElements(By.cssSelector(".RaceData02 span"));
+        	for(int i = 0; i < raceDataLine2Spans.size(); i++) {
+        		switch(i) {
+        			case 1: 
+        				System.out.println("경기장: " +  translateService.translate(TranslateDataType.STADIUM, raceDataLine2Spans.get(i).getText(), false));
+        				break;
+        			case 3: 
+        				System.out.println("마령/조건: " + raceDataLine2Spans.get(i).getText().replace("サラ系", "").replace("歳", "세").replace("以上", " 이상"));
+        				break;
+        			case 4: 
+        				System.out.println("클래스: " + 
+        						raceDataLine2Spans.get(i).getText()
+        						.replace("歳", "세 ")
+        						.replace("新馬", "신마전")
+        						.replace("未勝利", "미승리전")
+        						.replace("オープン", "오픈")
+        						.replace("勝クラス", "승 클래스")
+        						.replace("万下", "만엔 이하"));
+        				break;
+        			case 6: 
+        				System.out.println("핸디캡: " + 
+        						raceDataLine2Spans.get(i).getText()
+        						.replace("定量", "정량")
+        						.replace("ハンデ", "핸디캡")
+        						.replace("馬齢", "마령"));
+        				break;
+        			case 7:
+        				System.out.println("출주두수: " + raceDataLine2Spans.get(i).getText().replace("頭", ""));
+        				break;
+        			case 8: 
+        				String[] earns = raceDataLine2Spans.get(i).getText().replace("本賞金:", "").replace("万円", "").split("\\,");
+        				for(int place = 1; place <= earns.length; place++) {
+        					System.out.println(place + "착 상금: " + earns[place - 1] + "만엔");
+        				}
+        				break;
+        		}
+        	}
+        	
+        	
+        	
+        	Thread.sleep(3000);
+        	//출주마 목록 스크래핑
+        	List<WebElement> horses = driver.findElements(By.cssSelector(".HorseList"));
+        	for(WebElement horse : horses) {
+        		List<WebElement> horseDatas = horse.findElements(By.cssSelector("td"));
+        		for(int i = 0; i < horseDatas.size(); i++) {
+        			switch(i) {
+        				case 0: 
+	        				if(horseDatas.get(i).findElements(By.cssSelector("div")).size() > 0) 
+	        					System.out.println("착순: " + horseDatas.get(i).findElement(By.cssSelector("div")).getText());
+        				break;
+            			case 1: 
+            				if(horseDatas.get(i).findElements(By.cssSelector("div")).size() > 0) 
+            					System.out.println("와꾸: " + horseDatas.get(i).findElement(By.cssSelector("div")).getText());
+            				break;
+            			case 2: 
+            				if(horseDatas.get(i).findElements(By.cssSelector("div")).size() > 0) 
+            					System.out.println("마번: " + horseDatas.get(i).findElement(By.cssSelector("div")).getText());
+            				break;
+            			case 3: 
+            				WebElement horseName = horseDatas.get(i).findElement(By.cssSelector("a"));
+            				System.out.println("출주마 정보 링크: " + horseName.getAttribute("href"));
+            				System.out.println("마명: " + horseName.getText().replace("\"", ""));
+            				break;
+            			case 4: 
+            				String sexAndAge = horseDatas.get(i).getText();
+            				System.out.println("성별: " + sexAndAge.substring(0, 1).replace("牡", "숫말").replace("牝", "암말").replace("騸", "거세마"));
+            				System.out.println("나이: " + sexAndAge.substring(1));
+            				break;
+            			case 5: 
+            				System.out.println("부담중량: " + horseDatas.get(i).getText());
+            				break;
+            			case 6: 
+            				System.out.println("기수: " + translateService.translate(TranslateDataType.JOCKEY, horseDatas.get(i).findElement(By.cssSelector("a")).getText(), true));
+            				break;
+            			case 7: 
+            				System.out.println("타임: " + horseDatas.get(i).getText());
+            				break;
+            			case 8: 
+            				System.out.println("착차" + horseDatas.get(i).getText());
+            				break;
+            			case 9: 
+            				System.out.println("인기: " + horseDatas.get(i).getText());
+            				break;
+            			case 10: 
+            				System.out.println("배당: " + horseDatas.get(i).getText());
+            				break;
+            			case 11: 
+            				System.out.println("라스트3F: " + horseDatas.get(i).getText());
+            				break;
+            			case 12: 
+            				System.out.println("코너통과순위: " + horseDatas.get(i).getText());
+            				break;
+            			case 13: 
+            				WebElement home = horseDatas.get(i);
+            				System.out.println("지역: " + home.findElement(By.cssSelector("span")).getText().replace("美浦", "미호").replace("栗東", "릿토"));
+            				System.out.println("조교사: " + translateService.translate(TranslateDataType.TRAINER, home.findElement(By.cssSelector("a")).getText(), true));
+            				break;
+            			case 14: 
+            				String weightString = horseDatas.get(i).getText();
+                            if(weightString.trim().equals("計不")) {
+                            	System.out.println("마체중: -"); 
+                            } else {
+                            	if(weightString.contains("(")) {
+                            		System.out.println("마체중: " + weightString.substring(0, weightString.indexOf("(")));
+                            		System.out.println("증감: " + weightString.substring(weightString.indexOf("(") + 1, weightString.indexOf(")")));
+                            	} else {
+                            		System.out.println("마체중: " + weightString);
+                            	}
+                            }
+            				break;
+            			default: break;
+        			}
+        		}
+        	}
+        	
+        	
+        	Thread.sleep(3000);
             
             
         } catch (InterruptedException e) {
