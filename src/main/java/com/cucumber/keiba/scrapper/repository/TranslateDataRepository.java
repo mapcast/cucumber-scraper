@@ -4,8 +4,8 @@ import java.util.List;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import com.cucumber.keiba.scrapper.enums.TranslateDataType;
 import com.cucumber.keiba.scrapper.model.TranslateData;
-import com.cucumber.keiba.scrapper.model.TranslateDataType;
 import com.google.common.base.Optional;
 
 public interface TranslateDataRepository extends JpaRepository<TranslateData, Long> {

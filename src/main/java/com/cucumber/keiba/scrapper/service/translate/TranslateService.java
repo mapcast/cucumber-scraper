@@ -2,21 +2,25 @@ package com.cucumber.keiba.scrapper.service.translate;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.bson.Document;
 import org.springframework.stereotype.Service;
 
+import com.cucumber.keiba.scrapper.enums.TranslateDataType;
 import com.cucumber.keiba.scrapper.model.TranslateData;
-import com.cucumber.keiba.scrapper.model.TranslateDataType;
 import com.cucumber.keiba.scrapper.repository.TranslateDataRepository;
-import com.google.common.base.Optional;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
+import com.mongodb.client.result.DeleteResult;
+import com.mongodb.client.result.InsertOneResult;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.java.Log;
 
+@Log
 @Service
 @RequiredArgsConstructor
 public class TranslateService {
@@ -52,26 +56,7 @@ public class TranslateService {
 			return original;
 		}
 	}
-	/*
-	public String translateContains(TranslateDataType dataType, String original) {
-		List<TranslateData> searchList = translateDataRepository.findByTypeAndOriginalContaining(dataType, original);
-		if(searchList.size() > 0) {
-			TranslateData translateData = searchList.get(0);
-			if(translateData.getIsTranslatedByMachine()) {
-				StringBuffer result = new StringBuffer();
-				result.append(translateData.getTranslated());
-				result.append('(');
-				result.append(translateData.getOriginal());
-				result.append(')');
-				return result.toString();
-			} else {
-				return translateData.getTranslated();
-			}
-		} else {
-			return original;
-		}
-	}
-	*/
+	
 	public String translateJapaneseOnly(TranslateDataType dataType, String original) {
 		String japaneseCharactersRegex = "[\\u3040-\\u309F\\u30A0-\\u30FF]";
 
@@ -100,6 +85,21 @@ public class TranslateService {
 		}
 	}
 	
+	public Optional<Document> checkTranslateDataExist(TranslateDataType dataType, String original) {
+		MongoCollection<Document> collection = mongoDatabase.getCollection("translate_datas");
+		
+		Document search = new Document();
+		search.append("category", dataType);
+		search.append("original", original);
+		
+		Document searched = collection.find(search).first();
+		if(searched == null) {
+			return Optional.empty();
+		} else {
+			return Optional.of(searched);
+		}
+	}
+	
 	public void insertTranslateData(TranslateDataType dataType, String original, String translated, boolean translatedByMachine) {
 		MongoCollection<Document> collection = mongoDatabase.getCollection("translate_datas");
 		
@@ -114,14 +114,20 @@ public class TranslateService {
 			document.append("original", original);
 			document.append("translated", translated);
 			document.append("translated_by_machine", translatedByMachine);
-			collection.insertOne(document);
+			InsertOneResult result = collection.insertOne(document);
+			if(result.wasAcknowledged()) {
+				log.info("success to insert translate data: " + original + ", translated: " + translated);
+			} else {
+				log.info("failed to insert translate data: " + original);
+			}
 		}
 	}
 	
-	public void deleteTranslateDatas(TranslateDataType dataType) {
+	public boolean deleteTranslateDatas(TranslateDataType dataType) {
 		MongoCollection<Document> collection = mongoDatabase.getCollection("translate_datas");
 		Document search = new Document();
 		search.append("category", dataType);
-		collection.deleteMany(search);
+		DeleteResult result = collection.deleteMany(search);
+		return result.wasAcknowledged();
 	}
 }

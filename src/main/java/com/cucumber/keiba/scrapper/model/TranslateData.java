@@ -9,6 +9,8 @@ import javax.persistence.GenerationType;
 import javax.persistence.Id;
 import javax.persistence.Table;
 
+import com.cucumber.keiba.scrapper.enums.TranslateDataType;
+
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;

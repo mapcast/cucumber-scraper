@@ -6,15 +6,11 @@ import org.springframework.stereotype.Component;
 import com.fasterxml.jackson.databind.JsonNode;
 
 @Component
-public class NullUtil {
+public class DocumentUtil {
 	
 	public Document appendIfNotNull(Document document, JsonNode jsonNode, String name) {
 		if(jsonNode != null && !jsonNode.isNull()) {
-			if(document.containsKey(name)) {
-				document.replace(name, Document.parse(jsonNode.toString()));
-			} else {
-				document.append(name, Document.parse(jsonNode.toString()));
-			}
+			replaceOrAddElement(document, name, Document.parse(jsonNode.toString()));
 			return document;
 		} else {
 			return document;
@@ -23,16 +19,20 @@ public class NullUtil {
 	
 	public Document appendIfNotNullString(Document document, JsonNode jsonNode, String name) {
 		if(jsonNode != null && !jsonNode.isNull()) {
-			if(document.containsKey(name)) {
-				document.replace(name, jsonNode.textValue());
-			} else {
-				document.append(name, jsonNode.textValue());
-			}
-			
+			replaceOrAddElement(document, name, Document.parse(jsonNode.toString()));
 			return document;
 		} else {
 			return document;
 		}
 	}
+	
+	public Document replaceOrAddElement(Document document, String key, Object value) {
+        if (document.containsKey(key)) {
+            document.replace(key, value);
+        } else {
+            document.append(key, value);
+        }
+        return document;
+    }
 	
 }
