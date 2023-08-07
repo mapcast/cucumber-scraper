@@ -10,6 +10,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 
 import org.bson.Document;
 import org.openqa.selenium.By;
@@ -67,7 +68,8 @@ public class WebScrappingScheduler {
 		log.info("scheduler end");
 	}
 	
-	@Scheduled(cron = "0 7 23 * * *")
+	//13시 0분
+	@Scheduled(cron = "0 39 7 * * *")
 	public void syncUpcomingRaces() {
 		ObjectMapper objectMapper = new ObjectMapper();
 		RestTemplate restTemplate = new RestTemplate();
@@ -111,6 +113,7 @@ public class WebScrappingScheduler {
             		document = wrappedDocs.get();
             	} else {
             		document.append("original_id", raceOriginalId);
+            		document.append("race_id", UUID.randomUUID().toString());
             	}
             	
             	//레이스 정보 스크래핑
@@ -206,9 +209,6 @@ public class WebScrappingScheduler {
             		}
             	}
             	
-            	
-            	
-            	Thread.sleep(3000);
             	//출주마 목록 스크래핑
             	List<WebElement> horseRows = driver.findElements(By.cssSelector(".HorseList"));
             	List<Document> horses = new ArrayList<>();
@@ -219,37 +219,46 @@ public class WebScrappingScheduler {
             		for(int i = 0; i < horseDatas.size(); i++) {
             			switch(i) {
                 			case 0: 
-                				if(horseDatas.get(i).findElements(By.cssSelector("div")).size() > 0) {
-                					listHorse.append("waku", horseDatas.get(i).findElement(By.cssSelector("div")).getText());
+                				String wakuString = horseDatas.get(i).getText();
+	            				if(scrapperUtil.canConvertToInteger(wakuString)) {
+                					listHorse.append("waku", Integer.parseInt(wakuString));
                 				} else {
-                					listHorse.append("waku",0);
+                					listHorse.append("waku", 0);
                 				}
-                				
                 				break;
                 			case 1: 
-                				if(horseDatas.get(i).findElements(By.cssSelector("div")).size() > 0) {
-                					listHorse.append("horse_number", horseDatas.get(i).findElement(By.cssSelector("div")).getText());
+                				String horseNumberString = horseDatas.get(i).getText();
+	            				if(scrapperUtil.canConvertToInteger(horseNumberString)) {
+                					listHorse.append("horse_number", Integer.parseInt(horseNumberString));
                 				} else {
-                					listHorse.append("horse_number",0);
+                					listHorse.append("horse_number", 0);
                 				}
                 				break;
                 			case 3: 
                 				//horses에 넣을 데이터
                 				Document horse = new Document();
+                				Optional<Document> existingHorseId = horseService.findByOriginalId(horse.getString("original_id"));
+                				if(existingHorseId.isPresent()) { 
+                					listHorse.append("horse_id", existingHorseId);
+                				} else {
+                					String newUuid = UUID.randomUUID().toString();
+                					horse.append("horse_id", newUuid);
+                					listHorse.append("horse_id", newUuid);
+                				}
+                				
                 				WebElement horseNameElement = horseDatas.get(i).findElement(By.cssSelector("a"));
                 				String horseNameString = horseNameElement.getText().trim();
-                				System.out.println("마명: " + horseNameString);
                 				if(horseDatas.get(i).findElements(By.cssSelector("div")).size() > 0) 
-                					horse.append("original_name", horseNameString);
+                					horse = documentUtil.replaceOrAddElement(horse, "original_name", horseNameString);
                 				Optional<Document> translatedDataWrapped = translateService.checkTranslateDataExist(TranslateDataType.HORSE, horseNameString);
                 				if(translatedDataWrapped.isPresent()) {
                 					Document translateData = translatedDataWrapped.get();
                 					if(translateData.getBoolean("translated_by_machine")) {
-                						horse.append("translated_by_machine", true);
+                						horse = documentUtil.replaceOrAddElement(horse, "translated_by_machine", true);
                 					} else {
-                						horse.append("translated_by_machine", false);
+                						horse = documentUtil.replaceOrAddElement(horse, "translated_by_machine", false);
                 					}
-                					horse.append("translated_name",  translatedDataWrapped.get().getString("translated"));
+                					horse = documentUtil.replaceOrAddElement(horse, "translated_name", translatedDataWrapped.get().getString("translated"));
                 					listHorse.append("translated_name",  translatedDataWrapped.get().getString("translated"));
                 				} else {
                 					TranslateDto translateDto = new TranslateDto("ja", "ko", horseNameString);
@@ -260,16 +269,18 @@ public class WebScrappingScheduler {
                     					//System.out.println("번역 결과");
                     					//System.out.println(result.toPrettyString());
                     					translateService.insertTranslateData(TranslateDataType.HORSE, horseNameString, translated, true);
+                    					horse = documentUtil.replaceOrAddElement(horse, "translated_name", translated);
+                    					horse = documentUtil.replaceOrAddElement(horse, "translated_by_machine", true);
                     					horse.append("translated_name", translated);
                     					horse.append("translated_by_machine", true);
-                    					horse.append("need_to_scrap", true);
                     					listHorse.append("translated_name",  translated);
                     				} catch(Exception e) {
                     					log.info(e.toString());
                     				}
                 				}
-                				horse.append("original_id", horseNameElement.getAttribute("href").replace("https://db.netkeiba.com/horse/", ""));
-                				if(!horseService.isIdExist(horse.getString("original_id"))) horseService.insertDocs(horse);
+                				horse = documentUtil.replaceOrAddElement(horse, "need_to_scrap", true);
+                				horse = documentUtil.replaceOrAddElement(horse, "original_id", horseNameElement.getAttribute("href").replace("https://db.netkeiba.com/horse/", ""));
+                				horseService.saveDocs(horse);
                 				break;
                 			case 4: 
                 				String sexAndAge = horseDatas.get(i).getText();
@@ -345,8 +356,9 @@ public class WebScrappingScheduler {
             		}
             		horses.add(listHorse);
             	}
-            	document.append("horses", horses);
-            	raceService.insertDocs(document);
+            	document = documentUtil.replaceOrAddElement(document, "horses", horses);
+            	document = documentUtil.replaceOrAddElement(document, "is_ended", false);
+            	raceService.saveDocs(document);
             	Thread.sleep(3000);
             }
         } catch (Exception e) {
@@ -358,213 +370,257 @@ public class WebScrappingScheduler {
 	}
 	
 	//시작된지 10분 이상 지난 레이스를 찾아서 결과를 저장합니다.
-	@Scheduled(cron = "0 0/5 * * * *")
+	@Scheduled(cron = "0 0/15 * * * *")
 	public void syncEndedRace() {
+		ObjectMapper objectMapper = new ObjectMapper();
+		RestTemplate restTemplate = new RestTemplate();
+		
+		HttpHeaders headers = new HttpHeaders();
+		headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.set("X-Naver-Client-Id", translateClientId);
+        headers.set("X-Naver-Client-Secret", translateClientSecret);
+        
+        String apiUrl = "https://openapi.naver.com/v1/papago/n2mt";
+		
 		LocalDateTime startTime = LocalDateTime.now();
-		LocalDateTime endTime = LocalDateTime.now();
 		
 		//테스트용 코드
 		startTime = startTime.minusDays(1);
-		endTime = endTime.minusDays(1);
-		
 		startTime = startTime.minusMinutes(10);
 		startTime = startTime.minusSeconds(startTime.getSecond());
 		startTime = startTime.minusNanos(startTime.getNano());
-		endTime = endTime.minusMinutes(5);
-		endTime = endTime.minusSeconds(startTime.getSecond());
-		endTime = endTime.minusNanos(startTime.getNano());
 		MongoCursor<Document> endedRaces = raceService.getDocsByBsonFilter(Filters.and(
             Filters.gte("startTime", startTime), 
-            Filters.lt("startTime", endTime) 
+            Filters.eq("is_ended", false)
         ));
 		
 		while(endedRaces.hasNext()) {
 			Document endedRace = endedRaces.next();
+			try {
+				WebDriver driver = scrapperUtil.getChromeDriver();
+	        	driver.get("https://race.netkeiba.com/race/result.html?race_id=" + endedRace.getString("original_id"));
+	            Thread.sleep(3000); //브라우저 로딩될때까지 잠시 기다린다.
+	        	
+	        	//레이스 정보 스크래핑
+	        	WebElement raceNameAndGrade = driver.findElement(By.cssSelector(".RaceName"));
+	        	System.out.println("레이스 명: " + 
+	        			translateService.translate(TranslateDataType.RACE, raceNameAndGrade.getText()
+	    					.replace("歳", "세 ")
+							.replace("新馬", "신마전")
+							.replace("未勝利", "미승리전")
+							.replace("オープン", "오픈")
+	    					.replace("勝クラス", "승 클래스")
+	    					.replace("万下", "만엔 이하"), true));
+	        	endedRace = documentUtil.replaceOrAddElement(endedRace, "", raceNameAndGrade);
+	        	
+	        	WebElement raceDataLine1 = driver.findElement(By.cssSelector(".RaceData01"));
+	        	for(String raceData : raceDataLine1.getText().split(" ")) {
+	        		if(raceData.contains("発走")) {
+	        			//이미 처리한 데이터
+	        		} else if(raceData.contains("m")) {
+	        			//System.out.println("마장: " + translateService.translate(TranslateDataType.TRACK, raceData.replaceAll("[0-9]", "").replace("m", ""), false));
+	                	//System.out.println("거리: " + raceData.replaceAll("[^0-9]", ""));
+	        		} else if(raceData.contains("天候:")) {
+	        			endedRace = documentUtil.replaceOrAddElement(endedRace, "weather", 
+	        					translateService.translate(TranslateDataType.WEATHER, raceData.replace("天候:", ""), false));
+	        		} else if(raceData.contains("馬場:")) {
+	        			endedRace = documentUtil.replaceOrAddElement(endedRace, "condition", 
+	        					translateService.translate(TranslateDataType.CONDITION, raceData.replace("馬場:", ""), false));
+	        		}
+	        	}
+	        	
+	        	//출주마 목록 스크래핑
+	        	//출주마 목록 스크래핑
+            	List<Document> horses = new ArrayList<>();
+	        	List<WebElement> horseRows = driver.findElements(By.cssSelector(".HorseList"));
+	        	for(WebElement horseRow : horseRows) {
+	        		List<WebElement> horseDatas = horseRow.findElements(By.cssSelector("td"));
+	        		Document listHorse = new Document();
+	        		for(int i = 0; i < horseDatas.size(); i++) {
+	        			switch(i) {
+	        				case 0: 
+	        					String rposString = horseDatas.get(i).getText();
+	            				if(scrapperUtil.canConvertToInteger(rposString)) {
+                					listHorse.append("expected", Integer.parseInt(rposString));
+                				} else {
+                					listHorse.append("expected", 0);
+                				}
+	        				break;
+	            			case 1: 
+	            				String wakuString = horseDatas.get(i).getText();
+	            				if(scrapperUtil.canConvertToInteger(wakuString)) {
+                					listHorse.append("waku", Integer.parseInt(wakuString));
+                				} else {
+                					listHorse.append("waku", 0);
+                				}
+	            				break;
+	            			case 2: 
+	            				String horseNumberString = horseDatas.get(i).getText();
+	            				if(scrapperUtil.canConvertToInteger(horseNumberString)) {
+                					listHorse.append("horse_number", Integer.parseInt(horseNumberString));
+                				} else {
+                					listHorse.append("horse_number", 0);
+                				}
+	            				break;
+	            			case 3: 
+	            				Document horse = new Document();
+                				Optional<Document> existingHorseId = horseService.findByOriginalId(horse.getString("original_id"));
+                				if(existingHorseId.isPresent()) { 
+                					listHorse.append("horse_id", existingHorseId);
+                				} else {
+                					String newUuid = UUID.randomUUID().toString();
+                					horse.append("horse_id", newUuid);
+                					listHorse.append("horse_id", newUuid);
+                				}
+                				
+                				WebElement horseNameElement = horseDatas.get(i).findElement(By.cssSelector("a"));
+                				String horseNameString = horseNameElement.getText().trim();
+                				if(horseDatas.get(i).findElements(By.cssSelector("div")).size() > 0) 
+                					horse = documentUtil.replaceOrAddElement(horse, "original_name", horseNameString);
+                				Optional<Document> translatedDataWrapped = translateService.checkTranslateDataExist(TranslateDataType.HORSE, horseNameString);
+                				if(translatedDataWrapped.isPresent()) {
+                					Document translateData = translatedDataWrapped.get();
+                					if(translateData.getBoolean("translated_by_machine")) {
+                						horse = documentUtil.replaceOrAddElement(horse, "translated_by_machine", true);
+                					} else {
+                						horse = documentUtil.replaceOrAddElement(horse, "translated_by_machine", false);
+                					}
+                					horse = documentUtil.replaceOrAddElement(horse, "translated_name", translatedDataWrapped.get().getString("translated"));
+                					listHorse.append("translated_name",  translatedDataWrapped.get().getString("translated"));
+                				} else {
+                					log.info("주의: 미번역 데이터 있음");
+                					TranslateDto translateDto = new TranslateDto("ja", "ko", horseNameString);
+                    				HttpEntity<TranslateDto> translateEntity = new HttpEntity<>(translateDto, headers);
+                    				try {
+                    					JsonNode result = objectMapper.readTree(restTemplate.postForEntity(apiUrl, translateEntity, String.class).getBody());
+                    					String translated = result.get("message").get("result").get("translatedText").textValue();
+                    					//System.out.println("번역 결과");
+                    					//System.out.println(result.toPrettyString());
+                    					translateService.insertTranslateData(TranslateDataType.HORSE, horseNameString, translated, true);
+                    					horse = documentUtil.replaceOrAddElement(horse, "translated_name", translated);
+                    					horse = documentUtil.replaceOrAddElement(horse, "translated_by_machine", true);
+                    					horse.append("translated_name", translated);
+                    					horse.append("translated_by_machine", true);
+                    					listHorse.append("translated_name",  translated);
+                    				} catch(Exception e) {
+                    					log.info(e.toString());
+                    				}
+                				}
+                				horse = documentUtil.replaceOrAddElement(horse, "need_to_scrap", true);
+                				horse = documentUtil.replaceOrAddElement(horse, "original_id", horseNameElement.getAttribute("href").replace("https://db.netkeiba.com/horse/", ""));
+                				horseService.saveDocs(horse);
+	            				break;
+	            			case 4: 
+	            				String sexAndAge = horseDatas.get(i).getText();
+                				listHorse.append("gender", sexAndAge.substring(0, 1).replace("牡", "숫말").replace("牝", "암말").replace("騸", "거세마"));
+                				String ageString = sexAndAge.substring(1);
+	            				if(scrapperUtil.canConvertToInteger(ageString)) {
+                					listHorse.append("age", Integer.parseInt(ageString));
+                				} else {
+                					listHorse.append("age", 0);
+                				}
+	            				break;
+	            			case 5: 
+	            				String loadWeightString = horseDatas.get(i).getText();
+	            				if(scrapperUtil.canConvertToDouble(loadWeightString)) {
+                					listHorse.append("load_weight", Double.parseDouble(loadWeightString));
+                				} else {
+                					listHorse.append("load_weight", 0);
+                				}
+	            				break;
+	            			case 6: 
+	            				listHorse.append("jockey", translateService.translate(TranslateDataType.JOCKEY, horseDatas.get(i).getText(), true));
+	            				break;
+	            			case 7: 
+	            				listHorse.append("time", horseDatas.get(i).getText());
+	            				break;
+	            			case 8: 
+	            				listHorse.append("interval", horseDatas.get(i).getText());
+	            				break;
+	            			case 9: 
+	            				String expectedString = horseDatas.get(i).getText();
+	            				if(scrapperUtil.canConvertToInteger(expectedString)) {
+                					listHorse.append("expected", Integer.parseInt(expectedString));
+                				} else {
+                					listHorse.append("expected", 0);
+                				}
+	            				System.out.println("인기: " + horseDatas.get(i).getText());
+	            				break;
+	            			case 10: 
+	            				String ownesString = horseDatas.get(i).getText();
+	            				if(scrapperUtil.canConvertToInteger(ownesString)) {
+                					listHorse.append("ownes", Integer.parseInt(ownesString));
+                				} else {
+                					listHorse.append("ownes", 0);
+                				}
+	            				break;
+	            			case 11: 
+	            				String last3fString = horseDatas.get(i).getText();
+	            				if(scrapperUtil.canConvertToDouble(last3fString)) {
+                					listHorse.append("last_3f", Double.parseDouble(last3fString));
+                				} else {
+                					listHorse.append("last_3f", 0);
+                				}
+	            				break;
+	            			case 12: 
+	            				listHorse.append("conner_throughs", horseDatas.get(i).getText());
+	            				break;
+	            			case 13: 
+	            				WebElement home = horseDatas.get(i);
+                				listHorse.append("region", home.findElement(By.cssSelector("span")).getText().replace("美浦", "미호").replace("栗東", "릿토"));
+                				listHorse.append("trainer", translateService.translate(TranslateDataType.TRAINER, home.findElement(By.cssSelector("a")).getText(), true));
+	            				break;
+	            			case 14: 
+	            				String weightAndChanges = horseDatas.get(i).getText();
+                                if(weightAndChanges.trim().equals("計不")) {
+                                	System.out.println("마체중: -"); 
+                                } else {
+                                	if(weightAndChanges.contains("(")) {
+                                		String weightString = weightAndChanges.substring(0, weightAndChanges.indexOf("("));
+                                		String weightChangeString = weightAndChanges.substring(weightAndChanges.indexOf("(") + 1, weightAndChanges.indexOf(")"));
+                                		if(scrapperUtil.canConvertToInteger(weightString)) {
+                        					listHorse.append("weight", Integer.parseInt(weightString));
+                        				} else {
+                        					listHorse.append("weight", 0);
+                        				}
+                                		if(scrapperUtil.canConvertToInteger(weightChangeString)) {
+                        					listHorse.append("weight_change", Integer.parseInt(weightChangeString));
+                        				} else {
+                        					listHorse.append("weight_change", 0);
+                        				}
+                                	} else {
+                                		if(scrapperUtil.canConvertToInteger(weightAndChanges)) {
+                        					listHorse.append("weight", Integer.parseInt(weightAndChanges));
+                        				} else {
+                        					listHorse.append("weight", 0);
+                        				}
+                                	}
+                                }
+	            				break;
+	            			default: break;
+	        			}
+	        		}
+	        	}
+	        	
+	        	endedRace = documentUtil.replaceOrAddElement(endedRace, "horses", horses);
+	        	endedRace = documentUtil.replaceOrAddElement(endedRace, "is_ended", false);
+	        	raceService.saveDocs(endedRace);
+	        	
+	        	driver.close();	//탭 닫기
+		        driver.quit();	//브라우저 닫기
+		        Thread.sleep(3000);
+	            
+	        } catch (InterruptedException e) {
+	            e.printStackTrace();
+	        }
+			
+	        
 		}
 		
-		/*
-		WebDriver driver = scrapperUtil.getChromeDriver();
-		try {
-        	driver.get("https://race.netkeiba.com/race/result.html?race_id=202301010611");
-            Thread.sleep(3000); //브라우저 로딩될때까지 잠시 기다린다.
-        	
-        	//레이스 정보 스크래핑
-        	WebElement raceNameAndGrade = driver.findElement(By.cssSelector(".RaceName"));
-        	System.out.println("레이스 명: " + 
-        			translateService.translate(TranslateDataType.RACE, raceNameAndGrade.getText().replace("\"", "")
-    					.replace("歳", "세 ")
-						.replace("新馬", "신마전")
-						.replace("未勝利", "미승리전")
-						.replace("オープン", "오픈")
-    					.replace("勝クラス", "승 클래스")
-    					.replace("万下", "만엔 이하"), true));
-        	
-        	
-        	if(raceNameAndGrade.findElements(By.cssSelector("span")).size() > 0) {
-        		String gradeIconClasses = raceNameAndGrade.findElement(By.cssSelector("span")).getAttribute("class");
-        		if(gradeIconClasses.contains("Icon_GradeType18")) {
-        			System.out.println("그레이드: 1승 클래스");
-            	} else if(gradeIconClasses.contains("Icon_GradeType17")) {
-            		System.out.println("그레이드: 2승 클래스");
-            	} else if(gradeIconClasses.contains("Icon_GradeType16")) {
-            		System.out.println("그레이드: 3승 클래스");
-            	} else if(gradeIconClasses.contains("Icon_GradeType15")) {
-            		System.out.println("그레이드: 리스티드");
-            	} else if(gradeIconClasses.contains("Icon_GradeType5")) {
-            		System.out.println("그레이드: 오픈");
-            	} else if(gradeIconClasses.contains("Icon_GradeType3")) {
-            		System.out.println("그레이드: G3");
-            	} else if(gradeIconClasses.contains("Icon_GradeType2")) {
-            		System.out.println("그레이드: G2");
-            	} else if(gradeIconClasses.contains("Icon_GradeType1")) {
-            		System.out.println("그레이드: G1");
-            	}
-        	}
-        	
-        	WebElement raceDataLine1 = driver.findElement(By.cssSelector(".RaceData01"));
-        	for(String raceData : raceDataLine1.getText().split(" ")) {
-        		if(raceData.contains("発走")) {
-        			System.out.println("시작 시간: " + raceData.replace("発走", ""));
-        		} else if(raceData.contains("m")) {
-        			System.out.println("마장: " + translateService.translate(TranslateDataType.TRACK, raceData.replaceAll("[0-9]", "").replace("m", ""), false));
-                	System.out.println("거리: " + raceData.replaceAll("[^0-9]", ""));
-        		} else if(raceData.contains("天候:")) {
-        			System.out.println("날씨: " + translateService.translate(TranslateDataType.WEATHER, raceData.replace("天候:", ""), false));
-        		} else if(raceData.contains("馬場:")) {
-        			System.out.println("상태: " + translateService.translate(TranslateDataType.CONDITION, raceData.replace("馬場:", ""), false));
-        		}
-        	}
-        	
-        	List<WebElement> raceDataLine2Spans = driver.findElements(By.cssSelector(".RaceData02 span"));
-        	for(int i = 0; i < raceDataLine2Spans.size(); i++) {
-        		switch(i) {
-        			case 1: 
-        				System.out.println("경기장: " +  translateService.translate(TranslateDataType.STADIUM, raceDataLine2Spans.get(i).getText(), false));
-        				break;
-        			case 3: 
-        				System.out.println("마령/조건: " + raceDataLine2Spans.get(i).getText().replace("サラ系", "").replace("歳", "세").replace("以上", " 이상"));
-        				break;
-        			case 4: 
-        				System.out.println("클래스: " + 
-        						raceDataLine2Spans.get(i).getText()
-        						.replace("歳", "세 ")
-        						.replace("新馬", "신마전")
-        						.replace("未勝利", "미승리전")
-        						.replace("オープン", "오픈")
-        						.replace("勝クラス", "승 클래스")
-        						.replace("万下", "만엔 이하"));
-        				break;
-        			case 6: 
-        				System.out.println("핸디캡: " + 
-        						raceDataLine2Spans.get(i).getText()
-        						.replace("定量", "정량")
-        						.replace("ハンデ", "핸디캡")
-        						.replace("馬齢", "마령"));
-        				break;
-        			case 7:
-        				System.out.println("출주두수: " + raceDataLine2Spans.get(i).getText().replace("頭", ""));
-        				break;
-        			case 8: 
-        				String[] earns = raceDataLine2Spans.get(i).getText().replace("本賞金:", "").replace("万円", "").split("\\,");
-        				for(int place = 1; place <= earns.length; place++) {
-        					System.out.println(place + "착 상금: " + earns[place - 1] + "만엔");
-        				}
-        				break;
-        		}
-        	}
-        	
-        	
-        	
-        	Thread.sleep(3000);
-        	//출주마 목록 스크래핑
-        	List<WebElement> horses = driver.findElements(By.cssSelector(".HorseList"));
-        	for(WebElement horse : horses) {
-        		List<WebElement> horseDatas = horse.findElements(By.cssSelector("td"));
-        		for(int i = 0; i < horseDatas.size(); i++) {
-        			switch(i) {
-        				case 0: 
-	        				if(horseDatas.get(i).findElements(By.cssSelector("div")).size() > 0) 
-	        					System.out.println("착순: " + horseDatas.get(i).findElement(By.cssSelector("div")).getText());
-        				break;
-            			case 1: 
-            				if(horseDatas.get(i).findElements(By.cssSelector("div")).size() > 0) 
-            					System.out.println("와꾸: " + horseDatas.get(i).findElement(By.cssSelector("div")).getText());
-            				break;
-            			case 2: 
-            				if(horseDatas.get(i).findElements(By.cssSelector("div")).size() > 0) 
-            					System.out.println("마번: " + horseDatas.get(i).findElement(By.cssSelector("div")).getText());
-            				break;
-            			case 3: 
-            				WebElement horseName = horseDatas.get(i).findElement(By.cssSelector("a"));
-            				System.out.println("출주마 정보 링크: " + horseName.getAttribute("href"));
-            				System.out.println("마명: " + horseName.getText().replace("\"", ""));
-            				break;
-            			case 4: 
-            				String sexAndAge = horseDatas.get(i).getText();
-            				System.out.println("성별: " + sexAndAge.substring(0, 1).replace("牡", "숫말").replace("牝", "암말").replace("騸", "거세마"));
-            				System.out.println("나이: " + sexAndAge.substring(1));
-            				break;
-            			case 5: 
-            				System.out.println("부담중량: " + horseDatas.get(i).getText());
-            				break;
-            			case 6: 
-            				System.out.println("기수: " + translateService.translate(TranslateDataType.JOCKEY, horseDatas.get(i).findElement(By.cssSelector("a")).getText(), true));
-            				break;
-            			case 7: 
-            				System.out.println("타임: " + horseDatas.get(i).getText());
-            				break;
-            			case 8: 
-            				System.out.println("착차" + horseDatas.get(i).getText());
-            				break;
-            			case 9: 
-            				System.out.println("인기: " + horseDatas.get(i).getText());
-            				break;
-            			case 10: 
-            				System.out.println("배당: " + horseDatas.get(i).getText());
-            				break;
-            			case 11: 
-            				System.out.println("라스트3F: " + horseDatas.get(i).getText());
-            				break;
-            			case 12: 
-            				System.out.println("코너통과순위: " + horseDatas.get(i).getText());
-            				break;
-            			case 13: 
-            				WebElement home = horseDatas.get(i);
-            				System.out.println("지역: " + home.findElement(By.cssSelector("span")).getText().replace("美浦", "미호").replace("栗東", "릿토"));
-            				System.out.println("조교사: " + translateService.translate(TranslateDataType.TRAINER, home.findElement(By.cssSelector("a")).getText(), true));
-            				break;
-            			case 14: 
-            				String weightString = horseDatas.get(i).getText();
-                            if(weightString.trim().equals("計不")) {
-                            	System.out.println("마체중: -"); 
-                            } else {
-                            	if(weightString.contains("(")) {
-                            		System.out.println("마체중: " + weightString.substring(0, weightString.indexOf("(")));
-                            		System.out.println("증감: " + weightString.substring(weightString.indexOf("(") + 1, weightString.indexOf(")")));
-                            	} else {
-                            		System.out.println("마체중: " + weightString);
-                            	}
-                            }
-            				break;
-            			default: break;
-        			}
-        		}
-        	}
-        	
-        	
-        	Thread.sleep(3000);
-            
-            
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-
-        driver.close();	//탭 닫기
-        driver.quit();	//브라우저 닫기
-        */
+		
 	}
 	
-	@Scheduled(cron = "0 0/5 * * * *")
+	@Scheduled(cron = "0 0 0 * * *")
 	public void syncHorseDataDetail() {
 		
 		Map<String, Object> conditions = new HashMap<>();

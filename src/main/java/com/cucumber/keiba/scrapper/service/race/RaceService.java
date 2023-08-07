@@ -13,7 +13,9 @@ import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.result.InsertOneResult;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.java.Log;
 
+@Log
 @Service
 @RequiredArgsConstructor
 public class RaceService {
@@ -46,9 +48,17 @@ public class RaceService {
 		return collection.find(bson).cursor();
 	}
 	
-	public boolean insertDocs(Document document) {
+	public boolean saveDocs(Document document) {
 		MongoCollection<Document> collection = mongoDatabase.getCollection("race_datas");
-		InsertOneResult result = collection.insertOne(document);
-		return result.wasAcknowledged();
+		Document search = new Document();
+		search.append("original_id", document.get("original_id"));
+		if(collection.findOneAndReplace(search, document) == null) {
+			log.info("new event");
+			InsertOneResult result = collection.insertOne(document);
+			return result.wasAcknowledged();
+		} else {
+			log.info("replace event");
+			return true;
+		}
 	}
 }

@@ -18,7 +18,7 @@ public class WebScrapperUtil {
         System.setProperty("webdriver.chrome.driver", path.toString());
 		
 		ChromeOptions chromeOptions = new ChromeOptions();
-    	//chromeOptions.setHeadless(true);
+    	chromeOptions.setHeadless(true);
 		chromeOptions.addArguments("--remote-allow-origins=*");
     	chromeOptions.addArguments("--lang=ko");
     	chromeOptions.addArguments("--no-sandbox");

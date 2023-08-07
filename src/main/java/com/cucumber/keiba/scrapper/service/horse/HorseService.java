@@ -1,6 +1,8 @@
 package com.cucumber.keiba.scrapper.service.horse;
 
 import java.util.Map;
+import java.util.Optional;
+import java.util.UUID;
 
 import org.bson.Document;
 import org.bson.conversions.Bson;
@@ -12,7 +14,9 @@ import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.result.InsertOneResult;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.java.Log;
 
+@Log
 @Service
 @RequiredArgsConstructor
 public class HorseService {
@@ -32,20 +36,29 @@ public class HorseService {
 		return collection.find(bson).cursor();
 	}
 	
-	public boolean isIdExist(String originalId) {
+	public Optional<Document> findByOriginalId(String originalId) {
 		MongoCollection<Document> collection = mongoDatabase.getCollection("horse_datas");
 		Document search = new Document();
 		search.append("original_id", originalId);
+		Document searched = collection.find(search).first();
 		if(collection.find(search).first() != null) {
-			return true;
+			return Optional.of(searched);
 		} else {
-			return false;
+			return Optional.empty();
 		}
 	}
 	
-	public boolean insertDocs(Document document) {
+	public boolean saveDocs(Document document) {
 		MongoCollection<Document> collection = mongoDatabase.getCollection("horse_datas");
-		InsertOneResult result = collection.insertOne(document);
-		return result.wasAcknowledged();
+		Document search = new Document();
+		search.append("original_id", document.get("original_id"));
+		if(collection.findOneAndReplace(search, document) == null) {
+			log.info("new event");
+			InsertOneResult result = collection.insertOne(document);
+			return result.wasAcknowledged();
+		} else {
+			log.info("replace event");
+			return true;
+		}
 	}
 }
