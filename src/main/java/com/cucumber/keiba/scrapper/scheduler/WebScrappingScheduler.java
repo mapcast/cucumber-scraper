@@ -69,7 +69,7 @@ public class WebScrappingScheduler {
 	}
 	
 	//13시 0분
-	@Scheduled(cron = "0 39 7 * * *")
+	@Scheduled(cron = "0 2 22 * * *")
 	public void syncUpcomingRaces() {
 		ObjectMapper objectMapper = new ObjectMapper();
 		RestTemplate restTemplate = new RestTemplate();
@@ -83,12 +83,13 @@ public class WebScrappingScheduler {
 		
 		//경기 하루 전날 데이터 스크래핑
 		LocalDate now = LocalDate.now();
-		WebDriver driver = scrapperUtil.getChromeDriver();
+		//WebDriver driver = scrapperUtil.getChromeDriver();
+		WebDriver driver = scrapperUtil.getEdgeDriver();
 		DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMMdd");
 		if(now.getDayOfWeek() == DayOfWeek.FRIDAY || now.getDayOfWeek() == DayOfWeek.SATURDAY) {
 			now = now.plusDays(1);
-		} else if(now.getDayOfWeek() == DayOfWeek.SUNDAY || now.getDayOfWeek() == DayOfWeek.MONDAY) {
-			now = now.plusDays(6);
+		} else if(now.getDayOfWeek() == DayOfWeek.SUNDAY || now.getDayOfWeek() == DayOfWeek.TUESDAY) {
+			now = now.plusDays(5);
 		} else {
 			return;
 		}
@@ -370,7 +371,7 @@ public class WebScrappingScheduler {
 	}
 	
 	//시작된지 10분 이상 지난 레이스를 찾아서 결과를 저장합니다.
-	@Scheduled(cron = "0 0/15 * * * *")
+	@Scheduled(cron = "0 29 22 * * *")
 	public void syncEndedRace() {
 		ObjectMapper objectMapper = new ObjectMapper();
 		RestTemplate restTemplate = new RestTemplate();
@@ -385,7 +386,7 @@ public class WebScrappingScheduler {
 		LocalDateTime startTime = LocalDateTime.now();
 		
 		//테스트용 코드
-		startTime = startTime.minusDays(1);
+		//startTime = startTime.minusDays(1);
 		startTime = startTime.minusMinutes(10);
 		startTime = startTime.minusSeconds(startTime.getSecond());
 		startTime = startTime.minusNanos(startTime.getNano());
@@ -397,21 +398,21 @@ public class WebScrappingScheduler {
 		while(endedRaces.hasNext()) {
 			Document endedRace = endedRaces.next();
 			try {
-				WebDriver driver = scrapperUtil.getChromeDriver();
+				//WebDriver driver = scrapperUtil.getChromeDriver();
+				WebDriver driver = scrapperUtil.getEdgeDriver();
 	        	driver.get("https://race.netkeiba.com/race/result.html?race_id=" + endedRace.getString("original_id"));
 	            Thread.sleep(3000); //브라우저 로딩될때까지 잠시 기다린다.
 	        	
 	        	//레이스 정보 스크래핑
 	        	WebElement raceNameAndGrade = driver.findElement(By.cssSelector(".RaceName"));
-	        	System.out.println("레이스 명: " + 
+	        	endedRace = documentUtil.replaceOrAddElement(endedRace, "name", 
 	        			translateService.translate(TranslateDataType.RACE, raceNameAndGrade.getText()
-	    					.replace("歳", "세 ")
-							.replace("新馬", "신마전")
-							.replace("未勝利", "미승리전")
-							.replace("オープン", "오픈")
-	    					.replace("勝クラス", "승 클래스")
-	    					.replace("万下", "만엔 이하"), true));
-	        	endedRace = documentUtil.replaceOrAddElement(endedRace, "", raceNameAndGrade);
+    					.replace("歳", "세 ")
+						.replace("新馬", "신마전")
+						.replace("未勝利", "미승리전")
+						.replace("オープン", "오픈")
+    					.replace("勝クラス", "승 클래스")
+    					.replace("万下", "만엔 이하"), true));
 	        	
 	        	WebElement raceDataLine1 = driver.findElement(By.cssSelector(".RaceData01"));
 	        	for(String raceData : raceDataLine1.getText().split(" ")) {
@@ -629,9 +630,9 @@ public class WebScrappingScheduler {
 		MongoCursor<Document> horseDatas = horseService.getDocsByConditions(conditions);
 		while(horseDatas.hasNext()) {
 			Document horseData = horseDatas.next();
-			WebDriver driver = scrapperUtil.getChromeDriver();
+			WebDriver driver = scrapperUtil.getEdgeDriver();
 			try {
-	        	driver.get("https://db.netkeiba.com/horse/2019100205/");
+	        	driver.get("https://db.netkeiba.com/horse/" + horseData.getString("original_id"));
 	            Thread.sleep(3000); //브라우저 로딩될때까지 잠시 기다린다.
 	            
 	            //경주마 프로필

@@ -8,6 +8,8 @@ import org.bson.Document;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
+import org.openqa.selenium.edge.EdgeDriver;
+import org.openqa.selenium.edge.EdgeOptions;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -18,7 +20,7 @@ public class WebScrapperUtil {
         System.setProperty("webdriver.chrome.driver", path.toString());
 		
 		ChromeOptions chromeOptions = new ChromeOptions();
-    	chromeOptions.setHeadless(true);
+    	//chromeOptions.setHeadless(true);
 		chromeOptions.addArguments("--remote-allow-origins=*");
     	chromeOptions.addArguments("--lang=ko");
     	chromeOptions.addArguments("--no-sandbox");
@@ -30,6 +32,19 @@ public class WebScrapperUtil {
     	chromeOptions.setCapability("ignoreProtectedModeSettings", true);
     	
         WebDriver driver = new ChromeDriver(chromeOptions);
+    	driver.manage().timeouts().pageLoadTimeout(Duration.ofSeconds(30));
+        return driver;
+	}
+	
+	public WebDriver getEdgeDriver() {
+		Path path = Paths.get("C:\\webdriver\\msedgedriver.exe");
+        System.setProperty("webdriver.edge.driver", path.toString());
+        
+        EdgeOptions edgeOptions = new EdgeOptions();
+        edgeOptions.setCapability("ignoreZoomSetting", true);
+        edgeOptions.addArguments("--remote-allow-origins=*");
+    	
+        WebDriver driver = new EdgeDriver(edgeOptions);
     	driver.manage().timeouts().pageLoadTimeout(Duration.ofSeconds(30));
         return driver;
 	}
