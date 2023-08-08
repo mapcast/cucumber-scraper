@@ -286,7 +286,12 @@ public class WebScrappingScheduler {
                 			case 4: 
                 				String sexAndAge = horseDatas.get(i).getText();
                 				listHorse.append("gender", sexAndAge.substring(0, 1).replace("牡", "숫말").replace("牝", "암말").replace("騸", "거세마"));
-                				listHorse.append("age", sexAndAge.substring(1));
+                				String ageString = sexAndAge.substring(1);
+                				if(scrapperUtil.canConvertToInteger(ageString)) {
+                					listHorse.append("age", Integer.parseInt(ageString));
+                				} else {
+                					listHorse.append("age", 0);
+                				}
                 				break;
                 			case 5: 
                 				String loadString = horseDatas.get(i).getText();
@@ -637,45 +642,58 @@ public class WebScrappingScheduler {
 	            
 	            //경주마 프로필
 	            WebElement horseTitle = driver.findElement(By.cssSelector(".horse_title"));
-	            System.out.println("영문명: " + horseTitle.findElement(By.cssSelector(".eng_name a")).getText());
+	            horseData = documentUtil.replaceOrAddElement(horseData, "english_name", horseTitle.findElement(By.cssSelector(".eng_name a")).getText().trim());
 	            String[] horseBaseDatas = horseTitle.findElement(By.cssSelector(".txt_01")).getText().split("　");
-	            System.out.println("등록 상태: " + horseBaseDatas[0].replace("現役", "현역").replace("抹消", "말소"));
-	            System.out.println("성별/나이: " + horseBaseDatas[1].replace("牡", "숫말").replace("牝", "암말").replace("騸", "거세마").replace("騸", "거세마").replace("歳", "세"));
-	            System.out.println("털 색: " + translateService.translate(TranslateDataType.COLOR, horseBaseDatas[2], false));
+				horseData = documentUtil.replaceOrAddElement(horseData, "gender", horseBaseDatas[1].trim().substring(0, 1).replace("牡", "숫말").replace("牝", "암말").replace("騸", "거세마"));
+				String ageString = horseBaseDatas[1].trim().substring(1);
+				if(scrapperUtil.canConvertToInteger(ageString)) {
+					horseData = documentUtil.replaceOrAddElement(horseData, "age", Integer.parseInt(ageString.replace("歳", "세")));
+				} else {
+					horseData = documentUtil.replaceOrAddElement(horseData, "age", 0);
+				}
+				
 	            
 	            List<WebElement> horseProps = driver.findElements(By.cssSelector(".db_prof_table tbody tr"));
 	            for(WebElement horseProp : horseProps) {
 	            	String header = horseProp.findElement(By.cssSelector("th")).getText().trim();
 	            	if(header.equals("生年月日")) {
-	            		System.out.println("생년월일: " + horseProp.findElement(By.cssSelector("td")).getText().replace("年", "-").replace("月", "-").replace("日", ""));
+	            		String pattern = "yyyy-MM-dd";
+	            		String birthdayString = horseProp.findElement(By.cssSelector("td")).getText().replace("年", "-").replace("月", "-").replace("日", "").trim();
+	            		DateTimeFormatter formatter = DateTimeFormatter.ofPattern(pattern);
+	                    LocalDate birthday = LocalDate.parse(birthdayString, formatter);
+	            		horseData = documentUtil.replaceOrAddElement(horseData, "birthday", birthday);
 	            	} else if(header.equals("調教師")) {
 	            		String trainerAndRegion = horseProp.findElement(By.cssSelector("td")).getText();
-	                    if(trainerAndRegion.contains("(美浦)"))  System.out.println("지역: 미호"); 
-	                    else if(trainerAndRegion.contains("(栗東)"))  System.out.println("지역: 릿토"); 
-	                    System.out.println("조교사: " + translateService.translate(TranslateDataType.TRAINER, horseProp.findElement(By.cssSelector("td a")).getText(), true));
+	                    if(trainerAndRegion.contains("(美浦)")) horseData = documentUtil.replaceOrAddElement(horseData, "region", "미호");
+	                    else if(trainerAndRegion.contains("(栗東)")) horseData = documentUtil.replaceOrAddElement(horseData, "region", "릿토"); 
+	                    horseData = documentUtil.replaceOrAddElement(horseData, "trainer", 
+	                    		translateService.translate(TranslateDataType.TRAINER, horseProp.findElement(By.cssSelector("td a")).getText(), true));
 	            	} else if(header.equals("馬主")) {
-	            		System.out.println("마주: " + translateService.translate(TranslateDataType.OWNER, horseProp.findElement(By.cssSelector("td")).getText(), false));
+	            		horseData = documentUtil.replaceOrAddElement(horseData, "owner", 
+	            				translateService.translate(TranslateDataType.OWNER, horseProp.findElement(By.cssSelector("td")).getText(), false)); 
 	            	} else if(header.equals("募集情報")) {
-	            		System.out.println("모집정보: " + horseProp.findElement(By.cssSelector("td")).getText().replace("口", "구").replace("万円", "만엔"));
+	            		horseData = documentUtil.replaceOrAddElement(horseData, "club_price", horseProp.findElement(By.cssSelector("td")).getText().replace("口", "구").replace("万円", "만엔")); 
 	            	} else if(header.equals("生産者")) {
-	            		System.out.println("생산자: " + translateService.translate(TranslateDataType.BREEDER, horseProp.findElement(By.cssSelector("td")).getText(), false));
+	            		horseData = documentUtil.replaceOrAddElement(horseData, "breeder", 
+	            				translateService.translate(TranslateDataType.BREEDER, horseProp.findElement(By.cssSelector("td")).getText(), false)); 
 	            	} else if(header.equals("産地")) {
-	            		System.out.println("산지: " + horseProp.findElement(By.cssSelector("td")).getText());
+	            		horseData = documentUtil.replaceOrAddElement(horseData, "hometown", 
+	            				translateService.translate(TranslateDataType.HOMETOWN, horseProp.findElement(By.cssSelector("td")).getText(), false)); 
 	            	} else if(header.equals("セリ取引価格")) {
-	            		System.out.println("경매가: " + horseProp.findElement(By.cssSelector("td")).getText());
+	            		horseData = documentUtil.replaceOrAddElement(horseData, "sale_price", horseProp.findElement(By.cssSelector("td")).getText()); 
 	            	} else if(header.equals("獲得賞金")) {
 	            		String[] earnings = horseProp.findElement(By.cssSelector("td")).getText().split("/");
 	            		for(String earning : earnings) {
 	                    	if(earning.contains("(中央)")) {
-	                    		System.out.println("중앙 수득상금: " + earning.replace("億", "억 ").replace("万円", "만 엔").replace(" (中央)", ""));
+	                    		horseData = documentUtil.replaceOrAddElement(horseData, "jra_price", earning.replace("億", "억 ").replace("万円", "만 엔").replace(" (中央)", "")); 
 	                    	} else if(earning.contains("(地方)")) {
-	                    		System.out.println("지방 수득상금: " + earning.replace("億", "억 ").replace("万円", "만 엔").replace(" (地方)", ""));
+	                    		horseData = documentUtil.replaceOrAddElement(horseData, "local_price", earning.replace("億", "억 ").replace("万円", "만 엔").replace(" (地方)", "")); 
 	                    	}
 	                    }
 	            	} else if(header.equals("通算成績")) {
 	            		String[] records = horseProp.findElement(By.cssSelector("td")).getText().replace("[", "").replace("]", "").split(" ");
-	                    System.out.println("전적: " + records[0].replace("戦", "전 ").replace("勝", "승"));
-	                    System.out.println("전적(착순): " + records[1]);
+	                    horseData = documentUtil.replaceOrAddElement(horseData, "overalls", records[0].replace("戦", "전 ").replace("勝", "승").trim()); 
+	                    horseData = documentUtil.replaceOrAddElement(horseData, "arrivals", records[1].trim()); 
 	            	}
 	            }
 	            
