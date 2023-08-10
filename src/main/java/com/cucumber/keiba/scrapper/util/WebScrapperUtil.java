@@ -49,21 +49,5 @@ public class WebScrapperUtil {
         return driver;
 	}
 	
-	public boolean canConvertToInteger(String str) {
-        try {
-            Integer.parseInt(str);
-            return true;
-        } catch (NumberFormatException e) {
-            return false;
-        }
-    }
 	
-	public boolean canConvertToDouble(String str) {
-        try {
-            Double.parseDouble(str);
-            return true;
-        } catch (NumberFormatException e) {
-            return false;
-        }
-    }
 }

@@ -39,22 +39,26 @@ public class TranslateService {
 		} else {
 			search.append("original", original.trim());
 		}
-		
-		Document searched = collection.find(search).first();
-		if(searched != null) {
-			if(searched.getBoolean("translated_by_machine")) {
-				StringBuffer result = new StringBuffer();
-				result.append(searched.getString("translated"));
-				result.append('(');
-				result.append(searched.getString("original"));
-				result.append(')');
-				return result.toString();
+		try {
+			Document searched = collection.find(search).first();
+			if(searched != null) {
+				if(searched.getBoolean("translated_by_machine")) {
+					StringBuffer result = new StringBuffer();
+					result.append(searched.getString("translated"));
+					result.append('(');
+					result.append(searched.getString("original"));
+					result.append(')');
+					return result.toString();
+				} else {
+					return searched.getString("translated");
+				}
 			} else {
-				return searched.getString("translated");
+				return original;
 			}
-		} else {
+		} catch(Exception e) {
 			return original;
 		}
+		
 	}
 	
 	public String translateJapaneseOnly(TranslateDataType dataType, String original) {
