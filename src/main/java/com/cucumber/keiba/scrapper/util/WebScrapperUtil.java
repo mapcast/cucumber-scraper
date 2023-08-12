@@ -3,6 +3,8 @@ package com.cucumber.keiba.scrapper.util;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Duration;
+import java.util.HashMap;
+import java.util.Map;
 
 import org.bson.Document;
 import org.openqa.selenium.WebDriver;
@@ -14,6 +16,20 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class WebScrapperUtil {
+	
+	private Map<String, Boolean> driverRunningMap = new HashMap<>();
+	
+	public boolean isDriverIsRunning(String name) {
+        if (!driverRunningMap.containsKey(name)) {
+            return false;
+        } else {
+        	return driverRunningMap.get(name);
+        }
+    }
+	
+	public void setIsDriverIsRunning(String name, boolean isRunning) {
+		driverRunningMap.put(name, isRunning);
+	}
 		
 	public WebDriver getChromeDriver() {
 		Path path = Paths.get("C:\\webdriver\\chromedriver.exe");

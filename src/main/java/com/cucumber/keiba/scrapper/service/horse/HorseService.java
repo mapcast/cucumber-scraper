@@ -53,11 +53,11 @@ public class HorseService {
 		Document search = new Document();
 		search.append("original_id", document.get("original_id"));
 		if(collection.findOneAndReplace(search, document) == null) {
-			log.info("new event");
+			log.info("new horse data");
 			InsertOneResult result = collection.insertOne(document);
 			return result.wasAcknowledged();
 		} else {
-			log.info("replace event");
+			log.info("replace horse data");
 			return true;
 		}
 	}

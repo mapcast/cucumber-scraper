@@ -43,9 +43,9 @@ public class RaceService {
 		return collection.find(search).cursor();
 	}
 	
-	public MongoCursor<Document> getDocsByBsonFilter(Bson bson) {
+	public MongoCursor<Document> getDocsByDocumentQuery(Document query) {
 		MongoCollection<Document> collection = mongoDatabase.getCollection("race_datas");
-		return collection.find(bson).cursor();
+		return collection.find(query).cursor();
 	}
 	
 	public boolean saveDocs(Document document) {
@@ -53,11 +53,11 @@ public class RaceService {
 		Document search = new Document();
 		search.append("original_id", document.get("original_id"));
 		if(collection.findOneAndReplace(search, document) == null) {
-			log.info("new event");
+			log.info("new race data");
 			InsertOneResult result = collection.insertOne(document);
 			return result.wasAcknowledged();
 		} else {
-			log.info("replace event");
+			log.info("replace race data");
 			return true;
 		}
 	}

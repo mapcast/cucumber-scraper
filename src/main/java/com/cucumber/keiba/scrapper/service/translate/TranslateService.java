@@ -42,17 +42,9 @@ public class TranslateService {
 		try {
 			Document searched = collection.find(search).first();
 			if(searched != null) {
-				if(searched.getBoolean("translated_by_machine")) {
-					StringBuffer result = new StringBuffer();
-					result.append(searched.getString("translated"));
-					result.append('(');
-					result.append(searched.getString("original"));
-					result.append(')');
-					return result.toString();
-				} else {
-					return searched.getString("translated");
-				}
+				return searched.getString("translated");
 			} else {
+				insertUntranslateData(dataType, original);
 				return original;
 			}
 		} catch(Exception e) {
@@ -133,5 +125,15 @@ public class TranslateService {
 		search.append("category", dataType);
 		DeleteResult result = collection.deleteMany(search);
 		return result.wasAcknowledged();
+	}
+	
+	public void insertUntranslateData(TranslateDataType dataType, String original) {
+		MongoCollection<Document> untranslatedDatasCollection = mongoDatabase.getCollection("untranslate_datas");
+		Document untranslatedData = new Document();
+		untranslatedData.append("category", dataType);
+		untranslatedData.append("original", original);
+		if(untranslatedDatasCollection.find(untranslatedData).first() == null) {
+			untranslatedDatasCollection.insertOne(untranslatedData);
+		}
 	}
 }
