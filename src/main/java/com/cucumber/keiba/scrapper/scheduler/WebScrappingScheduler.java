@@ -72,13 +72,12 @@ public class WebScrappingScheduler {
 	@Value("${translate.client-secret}")
 	private String translateClientSecret;
 	
-	@Scheduled(cron = "0 34 21 * * *")
+	@Scheduled(cron = "0 7 18 * * *")
 	public void insertTranslateDatas() {
 		log.info("scheduler end");
 	}
 	
-	//13시 0분
-	@Scheduled(cron = "0 30 17 * * *")
+	@Scheduled(cron = "0 16 21 * * *")
 	public void syncUpcomingRaces() {
 		
 		String driverName = "upcomingRaceDriver";
@@ -100,8 +99,8 @@ public class WebScrappingScheduler {
 			DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMMdd");
 			if(now.getDayOfWeek() == DayOfWeek.FRIDAY || now.getDayOfWeek() == DayOfWeek.SATURDAY) {
 				now = now.plusDays(1);
-			} else if(now.getDayOfWeek() == DayOfWeek.SUNDAY || now.getDayOfWeek() == DayOfWeek.TUESDAY) {
-				now = now.plusDays(5);
+			} else if(now.getDayOfWeek() == DayOfWeek.SUNDAY || now.getDayOfWeek() == DayOfWeek.MONDAY) {
+				now = now.plusDays(6);
 			} else {
 				return;
 			}
@@ -131,10 +130,16 @@ public class WebScrappingScheduler {
 	            		document.append("race_id", UUID.randomUUID().toString());
 	            	}
 	            	
+	            	String roundString = driver.findElement(By.cssSelector(".RaceNum")).getText();
+	            	document = documentUtil.replaceOrAddElement(document, "round", commonUtil.convertToInteger(roundString));
+	            	
+	            	
 	            	//레이스 정보 스크래핑
 	            	WebElement raceNameAndGrade = driver.findElement(By.cssSelector(".RaceName"));
 	            	document = documentUtil.replaceOrAddElement(document, "name", 
 	            			translateService.translate(TranslateDataType.RACE, raceNameAndGrade.getText()
+        					.replace("以上", "이상 ")
+		        			.replace("障害", "장애물 ")
 	    					.replace("歳", "세 ")
 							.replace("新馬", "신마전")
 							.replace("未勝利", "미승리전")
@@ -161,6 +166,8 @@ public class WebScrappingScheduler {
 	                		document = documentUtil.replaceOrAddElement(document, "grade", RaceGrade.G2);
 	                	} else if(gradeIconClasses.contains("Icon_GradeType1")) {
 	                		document = documentUtil.replaceOrAddElement(document, "grade", RaceGrade.G1);
+	                	} else {
+	                		document = documentUtil.replaceOrAddElement(document, "grade", RaceGrade.NONE);
 	                	}
 	            	}
 	            	
@@ -286,7 +293,7 @@ public class WebScrappingScheduler {
 	                				break;
 	                			case 4: 
 	                				String sexAndAge = horseDatas.get(i).getText();
-	                				listHorse.append("gender", sexAndAge.substring(0, 1).replace("牡", "숫말").replace("牝", "암말").replace("騸", "거세마"));
+	                				listHorse.append("gender", sexAndAge.substring(0, 1).replace("牡", "숫말").replace("牝", "암말").replace("騸", "거세마").replace("セ", "거세마"));
 	                				String ageString = sexAndAge.substring(1);
 	                				listHorse.append("age", commonUtil.convertToInteger(ageString));
 	                				break;
@@ -324,7 +331,7 @@ public class WebScrappingScheduler {
 	                				break;
 	                			case 9: 
 	                				String ownesString = horseDatas.get(i).findElement(By.cssSelector("span")).getText();
-	                				listHorse.append("ownes", commonUtil.convertToInteger(ownesString));
+	                				listHorse.append("ownes", commonUtil.convertToDouble(ownesString));
 	                				break;
 	                			case 10: 
 	                				String expectedString = horseDatas.get(i).findElement(By.cssSelector("span")).getText();
@@ -352,7 +359,7 @@ public class WebScrappingScheduler {
 	
 	//BOOKMARK
 	
-	//시작된지 10분 이상 지난 레이스를 찾아서 결과를 저장합니다.
+	//시작된지 20분 이상 지난 레이스를 찾아서 결과를 저장합니다.
 	@Scheduled(cron = "0 0/5 * * * *")
 	public void syncEndedRace() {
 		String driverName = "endedRaceDriver";
@@ -367,7 +374,7 @@ public class WebScrappingScheduler {
 	        
 	        String apiUrl = "https://openapi.naver.com/v1/papago/n2mt";
 			
-			LocalDateTime searchTime = LocalDateTime.now().minusMinutes(10).withSecond(0).withNano(0);
+			LocalDateTime searchTime = LocalDateTime.now().minusMinutes(30).withSecond(0).withNano(0);
 			Date startSearchDate = Date.from(searchTime.atZone(ZoneOffset.UTC).toInstant());
 			
 			Document query = new Document("start_time", new Document("$lte", startSearchDate)).append("is_ended", false);
@@ -388,6 +395,8 @@ public class WebScrappingScheduler {
 		        	WebElement raceNameAndGrade = driver.findElement(By.cssSelector(".RaceName"));
 		        	endedRace = documentUtil.replaceOrAddElement(endedRace, "name", 
 		        			translateService.translate(TranslateDataType.RACE, raceNameAndGrade.getText()
+		        			.replace("以上", "이상 ")
+		        			.replace("障害", "장애물 ")
 	    					.replace("歳", "세 ")
 							.replace("新馬", "신마전")
 							.replace("未勝利", "미승리전")
@@ -445,8 +454,8 @@ public class WebScrappingScheduler {
 	                				
 	                				WebElement horseNameElement = horseDatas.get(i).findElement(By.cssSelector("a"));
 	                				String horseNameString = horseNameElement.getText().trim();
-	                				if(horseDatas.get(i).findElements(By.cssSelector("div")).size() > 0) 
-	                					horse = documentUtil.replaceOrAddElement(horse, "original_name", horseNameString);
+	                				//if(horseDatas.get(i).findElements(By.cssSelector("div")).size() > 0) 
+	                				horse = documentUtil.replaceOrAddElement(horse, "original_name", horseNameString);
 	                				Optional<Document> translatedDataWrapped = translateService.checkTranslateDataExist(TranslateDataType.HORSE, horseNameString);
 	                				if(translatedDataWrapped.isPresent()) {
 	                					Document translateData = translatedDataWrapped.get();
@@ -483,7 +492,7 @@ public class WebScrappingScheduler {
 		            				break;
 		            			case 4: 
 		            				String sexAndAge = horseDatas.get(i).getText();
-	                				listHorse.append("gender", sexAndAge.substring(0, 1).replace("牡", "숫말").replace("牝", "암말").replace("騸", "거세마"));
+	                				listHorse.append("gender", sexAndAge.substring(0, 1).replace("牡", "숫말").replace("牝", "암말").replace("騸", "거세마").replace("セ", "거세마"));
 	                				String ageString = sexAndAge.substring(1);
 	                				listHorse.append("age", commonUtil.convertToInteger(ageString));
 		            				break;
@@ -506,7 +515,7 @@ public class WebScrappingScheduler {
 		            				break;
 		            			case 10: 
 		            				String ownesString = horseDatas.get(i).getText();
-		            				listHorse.append("ownes", commonUtil.convertToInteger(ownesString));
+		            				listHorse.append("ownes", commonUtil.convertToDouble(ownesString));
 		            				break;
 		            			case 11: 
 		            				String last3fString = horseDatas.get(i).getText();
@@ -557,6 +566,7 @@ public class WebScrappingScheduler {
 	
 	@Scheduled(cron = "0 0/5 * * * *")
 	public void syncHorseDataDetail() {
+		//차후 12시~오전 9시 사이에만 동작하게 할것
 		String driverName = "horseDetailScrapDriver";
 		if(!scrapperUtil.isDriverIsRunning(driverName)) {
 			Map<String, Object> conditions = new HashMap<>();
@@ -566,6 +576,8 @@ public class WebScrappingScheduler {
 			WebDriver driver = scrapperUtil.getEdgeDriver();
 			driver.get("https://www.google.com");
 			scrapperUtil.setIsDriverIsRunning(driverName, true);
+			//스케줄러 1회 돌때 최대 20건의 경주마 데이터만 변경
+			int count = 0;
 			while(horseDatas.hasNext()) {
 				Document horseData = horseDatas.next();
 				try {
@@ -577,9 +589,13 @@ public class WebScrappingScheduler {
 		            if(horseTitle.findElements(By.cssSelector(".eng_name a")).size() > 0)
 		            	horseData = documentUtil.replaceOrAddElement(horseData, "english_name", horseTitle.findElement(By.cssSelector(".eng_name a")).getText().trim());
 		            String[] horseBaseDatas = horseTitle.findElement(By.cssSelector(".txt_01")).getText().split("　");
-					horseData = documentUtil.replaceOrAddElement(horseData, "gender", horseBaseDatas[1].trim().substring(0, 1).replace("牡", "숫말").replace("牝", "암말").replace("騸", "거세마"));
+					horseData = documentUtil.replaceOrAddElement(horseData, "gender", horseBaseDatas[1].trim().substring(0, 1).replace("牡", "숫말").replace("牝", "암말").replace("騸", "거세마").replace("セ", "거세마"));
 					String ageString = horseBaseDatas[1].trim().substring(1);
 					horseData = documentUtil.replaceOrAddElement(horseData, "age", commonUtil.convertToInteger(ageString.replace("歳", "세")));
+					if(horseBaseDatas.length > 2) {
+						horseData = documentUtil.replaceOrAddElement(horseData, "color", 
+								translateService.translate(TranslateDataType.COLOR, horseBaseDatas[2], true));
+					}
 					
 		            
 		            List<WebElement> horseProps = driver.findElements(By.cssSelector(".db_prof_table tbody tr"));
@@ -658,6 +674,8 @@ public class WebScrappingScheduler {
 		                if(raceString.contains("(")) {
 		            		raceResult.append("name", 
 		            				translateService.translate(TranslateDataType.RACE, raceString.substring(0, raceString.indexOf("(")), true)
+		            				.replace("以上", "이상 ")
+				        			.replace("障害", "장애물 ")
 			            			.replace("歳", "세 ")
 									.replace("新馬", "신마전")
 									.replace("未勝利", "미승리전")
@@ -668,6 +686,8 @@ public class WebScrappingScheduler {
 		            	} else {
 		            		raceResult.append("name", 
 	            				translateService.translate(TranslateDataType.RACE, raceString, true)
+	            				.replace("以上", "이상 ")
+			        			.replace("障害", "장애물 ")
 		            			.replace("歳", "세 ")
 								.replace("新馬", "신마전")
 								.replace("未勝利", "미승리전")
@@ -758,11 +778,13 @@ public class WebScrappingScheduler {
 		            	translateService.translateJapaneseOnly(TranslateDataType.MARE, commonUtil.cutBeforePar(bloodLine.get(28).findElements(By.cssSelector(".b_fml")).get(0).findElements(By.cssSelector("a")).get(0).getText())));
 		            horseData = documentUtil.replaceOrAddElement(horseData, "need_to_scrap", false);
 		            horseService.saveDocs(horseData);
-		            Thread.sleep(1000);
+		            Thread.sleep(500);
 		            
 		        } catch (Exception e) {
 		            e.printStackTrace();
 		        }
+				count ++;
+				if(count >= 20) break;
 			}
 			
 			driver.close();	//탭 닫기
