@@ -6,7 +6,7 @@ import org.springframework.stereotype.Component;
 public class CommonUtil {
 	public int convertToInteger(String str) {
         try {
-            return Integer.parseInt(str.replaceAll("[^0-9]", ""));
+            return Integer.parseInt(str.replaceAll("[^0-9\\-\\+]", ""));
         } catch (NumberFormatException e) {
             return 0;
         }
@@ -14,7 +14,7 @@ public class CommonUtil {
 	
 	public double convertToDouble(String str) {
         try {
-            return Double.parseDouble(str.replaceAll("[^0-9\\.]", ""));
+            return Double.parseDouble(str.replaceAll("[^0-9\\.\\-\\+]", ""));
         } catch (NumberFormatException e) {
             return 0;
         }
