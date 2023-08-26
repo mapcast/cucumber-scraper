@@ -27,4 +27,8 @@ public class CommonUtil {
 			return str;
 		}
 	}
+	
+	public String removeMark(String str) {
+		return str.replace("★", "").replace("△", "").replace("▲", "").replace("☆", "");
+	}
 }
