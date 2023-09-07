@@ -61,4 +61,18 @@ public class HorseService {
 			return true;
 		}
 	}
+	
+	public boolean saveBloodLine(Document document) {
+		MongoCollection<Document> collection = mongoDatabase.getCollection("bloodline_datas");
+		Document search = new Document();
+		search.append("horse_id", document.get("horse_id"));
+		if(collection.findOneAndReplace(search, document) == null) {
+			log.info("new bloodline data");
+			InsertOneResult result = collection.insertOne(document);
+			return result.wasAcknowledged();
+		} else {
+			log.info("replace horse data");
+			return true;
+		}
+	}
 }
