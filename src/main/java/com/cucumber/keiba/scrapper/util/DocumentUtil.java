@@ -69,9 +69,9 @@ public class DocumentUtil extends CommonUtil {
 		String male1YearAndColor = readYearAndColorLine(element);
         if(male1YearAndColor != null) {
         	String[] splitted = male1YearAndColor.split(" ");
-        	if(splitted.length > 0) {
+        	if(splitted.length >= 2) {
         		document.append(fieldName + "_year", convertToInteger(splitted[0]));
-        		document.append(fieldName + "_color", translateColor(splitted[1]));
+        		document.append(fieldName + "_color", splitted[1].trim().replace("毛", ""));
         	}
         }
         return document;

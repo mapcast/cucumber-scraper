@@ -1,5 +1,6 @@
 package com.cucumber.keiba.scrapper.service.horse;
 
+import java.util.Arrays;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -11,6 +12,8 @@ import org.springframework.stereotype.Service;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoCursor;
 import com.mongodb.client.MongoDatabase;
+import com.mongodb.client.model.Aggregates;
+import com.mongodb.client.model.Sorts;
 import com.mongodb.client.result.InsertOneResult;
 
 import lombok.RequiredArgsConstructor;
@@ -29,6 +32,27 @@ public class HorseService {
 			search.append(key, conditions.get(key));
 		}
 		return collection.find(search).cursor();
+	}
+	
+	public long getDocsCountByConditions(Map<String, Object> conditions) {
+		MongoCollection<Document> collection = mongoDatabase.getCollection("horse_datas");
+		Document search = new Document();
+		for(String key : conditions.keySet()) {
+			search.append(key, conditions.get(key));
+		}
+		return collection.countDocuments(search);
+	}
+	
+	public MongoCursor<Document> getRandom20HorsesByConditions(Map<String, Object> conditions) {
+		MongoCollection<Document> collection = mongoDatabase.getCollection("horse_datas");
+		Document search = new Document();
+		for(String key : conditions.keySet()) {
+			search.append(key, conditions.get(key));
+		}
+		return collection.aggregate(Arrays.asList(
+			Aggregates.match(search),
+			Aggregates.sample(20)
+		)).cursor();
 	}
 	
 	public MongoCursor<Document> getDocsByBsonFilter(Bson bson) {
@@ -60,6 +84,15 @@ public class HorseService {
 			log.info("replace horse data");
 			return true;
 		}
+	}
+	
+	public boolean isBloodlineExist(String horseId) {
+		MongoCollection<Document> collection = mongoDatabase.getCollection("bloodline_datas");
+		Document search = new Document();
+		search.append("horse_id", horseId);
+		Document document = collection.find(search).first();
+		if(document == null) return false;
+		else return true;
 	}
 	
 	public boolean saveBloodLine(Document document) {
