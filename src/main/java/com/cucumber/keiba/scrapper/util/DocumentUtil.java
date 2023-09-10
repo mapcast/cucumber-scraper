@@ -161,10 +161,10 @@ public class DocumentUtil extends CommonUtil {
         bloodlineData = setYearAndColor("bloodline_female_1", bloodlineData, female1Element);
         WebElement male3Element = bloodLine.get(16).findElements(By.cssSelector("td")).get(1);
         bloodlineData.append("bloodline_male_3", translateService.translateJapaneseOnly(TranslateDataType.STALION, commonUtil.cutBeforePar(male3Element.findElements(By.cssSelector("a")).get(0).getText())));
-        bloodlineData = setYearAndColor("bloodline_female_3", bloodlineData, male3Element);
+        bloodlineData = setYearAndColor("bloodline_male_3", bloodlineData, male3Element);
         WebElement male6Element = bloodLine.get(16).findElements(By.cssSelector("td")).get(2);
         bloodlineData.append("bloodline_male_6", translateService.translateJapaneseOnly(TranslateDataType.STALION, commonUtil.cutBeforePar(male6Element.findElements(By.cssSelector("a")).get(0).getText())));
-        bloodlineData = setYearAndColor("bloodline_female_6", bloodlineData, male6Element);
+        bloodlineData = setYearAndColor("bloodline_male_6", bloodlineData, male6Element);
         WebElement male12Element = bloodLine.get(16).findElements(By.cssSelector("td")).get(3);
         bloodlineData.append("bloodline_male_12", translateService.translateJapaneseOnly(TranslateDataType.STALION, commonUtil.cutBeforePar(male12Element.findElements(By.cssSelector("a")).get(0).getText())));
         bloodlineData = setYearAndColor("bloodline_male_12", bloodlineData, male6Element);

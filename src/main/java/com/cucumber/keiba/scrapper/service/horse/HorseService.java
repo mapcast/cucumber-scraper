@@ -55,10 +55,11 @@ public class HorseService {
 		)).cursor();
 	}
 	
-	public MongoCursor<Document> getDocsByBsonFilter(Bson bson) {
+	public MongoCursor<Document> getDocsByDocumentQuery(Document query) {
 		MongoCollection<Document> collection = mongoDatabase.getCollection("horse_datas");
-		return collection.find(bson).cursor();
+		return collection.find(query).cursor();
 	}
+	
 	
 	public Optional<Document> findByOriginalId(String originalId) {
 		MongoCollection<Document> collection = mongoDatabase.getCollection("horse_datas");
