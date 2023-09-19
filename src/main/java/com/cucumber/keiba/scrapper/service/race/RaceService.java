@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoCursor;
 import com.mongodb.client.MongoDatabase;
+import com.mongodb.client.model.Sorts;
 import com.mongodb.client.result.InsertOneResult;
 
 import lombok.RequiredArgsConstructor;
@@ -54,6 +55,23 @@ public class RaceService {
 		search.append("original_id", document.get("original_id"));
 		if(collection.findOneAndReplace(search, document) == null) {
 			log.info("new race data");
+			InsertOneResult result = collection.insertOne(document);
+			return result.wasAcknowledged();
+		} else {
+			log.info("replace race data");
+			return true;
+		}
+	}
+	
+	
+
+	
+	public boolean saveSchedule(Document document) {
+		MongoCollection<Document> collection = mongoDatabase.getCollection("schedule_datas");
+		Document search = new Document();
+		search.append("order", document.get("order"));
+		if(collection.findOneAndReplace(search, document) == null) {
+			log.info("new schedule data");
 			InsertOneResult result = collection.insertOne(document);
 			return result.wasAcknowledged();
 		} else {
