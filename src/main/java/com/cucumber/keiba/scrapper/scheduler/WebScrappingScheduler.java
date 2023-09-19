@@ -1276,13 +1276,13 @@ public class WebScrappingScheduler {
 							leadingData.append("dirt_win", documentUtil.convertToInteger(td.getText()));
 							break;
 						case 18:
-							leadingData.append("win_ratio", (double) documentUtil.convertToInteger(td.getText()) / 10 );
+							leadingData.append("win_ratio", (double) documentUtil.convertToInteger(td.getText()) / 10);
 							break;
 						case 19:
-							leadingData.append("second_ratio", (double) documentUtil.convertToInteger(td.getText()) / 10 );
+							leadingData.append("second_ratio", (double) documentUtil.convertToInteger(td.getText()) / 10);
 							break;
 						case 20:
-							leadingData.append("third_ratio", (double) documentUtil.convertToInteger(td.getText()) / 10 );
+							leadingData.append("third_ratio", (double) documentUtil.convertToInteger(td.getText()) / 10);
 							break;
 						default: 
 							break;
@@ -1441,6 +1441,176 @@ public class WebScrappingScheduler {
 							break;
 						case 18:
 							leadingData.append("third_ratio", (double) documentUtil.convertToInteger(td.getText()) / 10 );
+							break;
+						default: 
+							break;
+						}
+					}
+					leadingService.saveDocs(leadingData);
+				}
+			} catch(Exception e) {
+				e.printStackTrace();
+			}
+			
+			driver.navigate().to("https://db.netkeiba.com/?pid=sire_leading");
+			try {
+				Thread.sleep(500); //브라우저 로딩될때까지 잠시 기다린다.
+				List<WebElement> schedules = driver.findElement(By.cssSelector(".race_table_01")).findElements(By.cssSelector("tr"));
+				for(int i = 2; i < schedules.size(); i++) {
+					List<WebElement> tds = schedules.get(i).findElements(By.cssSelector("td"));
+					Document leadingData = new Document();
+					leadingData.append("category", "sire");
+					leadingData.append("order", i - 1);
+					for(int j = 0; j < tds.size(); j++) {
+						WebElement td = tds.get(j);
+						switch(j) {
+						case 0: 
+							leadingData.append("rank", documentUtil.convertToInteger(td.getText()));
+							break;
+						case 1: 
+							leadingData.append("name", translateService.translate(TranslateDataType.STALION, td.getText(), false));
+							break;
+						case 2: 
+							leadingData.append("child_count", documentUtil.convertToInteger(td.getText()));
+							break;
+						case 3: 
+							leadingData.append("winner_count", documentUtil.convertToInteger(td.getText()));
+							break;
+						case 4: 
+							leadingData.append("race_count", documentUtil.convertToInteger(td.getText()));
+							break;
+						case 5: 
+							leadingData.append("race_wins", documentUtil.convertToInteger(td.getText()));
+							break;
+						case 6: 
+							leadingData.append("biggame_count", documentUtil.convertToInteger(td.getText()));
+							break;
+						case 7: 
+							leadingData.append("biggame_win", documentUtil.convertToInteger(td.getText()));
+							break;
+						case 8: 
+							leadingData.append("special_count", documentUtil.convertToInteger(td.getText()));
+							break;
+						case 9 : 
+							leadingData.append("special_win", documentUtil.convertToInteger(td.getText()));
+							break;
+						case 10: 
+							leadingData.append("normal_count", documentUtil.convertToInteger(td.getText()));
+							break;
+						case 11: 
+							leadingData.append("normal_win", documentUtil.convertToInteger(td.getText()));
+							break;
+						case 12: 
+							leadingData.append("turf_count", documentUtil.convertToInteger(td.getText()));
+							break;
+						case 13: 
+							leadingData.append("turf_win", documentUtil.convertToInteger(td.getText()));
+							break;
+						case 14: 
+							leadingData.append("dirt_count", documentUtil.convertToInteger(td.getText()));
+							break;
+						case 15: 
+							leadingData.append("dirt_win", documentUtil.convertToInteger(td.getText()));
+							break;
+						case 16:
+							leadingData.append("win_ratio", (double) documentUtil.convertToInteger(td.getText()) / 10);
+							break;
+						case 17:
+							leadingData.append("aei", documentUtil.convertToDouble(td.getText()));
+							break;
+						case 18:
+							leadingData.append("earnings", documentUtil.convertToDouble(td.getText()));
+							break;
+						case 19:
+							leadingData.append("turf_distance", documentUtil.convertToDouble(td.getText()));
+							break;
+						case 20:
+							leadingData.append("dirt_distance", documentUtil.convertToDouble(td.getText()));
+							break;
+						default: 
+							break;
+						}
+					}
+					leadingService.saveDocs(leadingData);
+				}
+			} catch(Exception e) {
+				e.printStackTrace();
+			}
+			
+			driver.navigate().to("https://db.netkeiba.com/?pid=bms_leading");
+			try {
+				Thread.sleep(500); //브라우저 로딩될때까지 잠시 기다린다.
+				List<WebElement> schedules = driver.findElement(By.cssSelector(".race_table_01")).findElements(By.cssSelector("tr"));
+				for(int i = 2; i < schedules.size(); i++) {
+					List<WebElement> tds = schedules.get(i).findElements(By.cssSelector("td"));
+					Document leadingData = new Document();
+					leadingData.append("category", "bms");
+					leadingData.append("order", i - 1);
+					for(int j = 0; j < tds.size(); j++) {
+						WebElement td = tds.get(j);
+						switch(j) {
+						case 0: 
+							leadingData.append("rank", documentUtil.convertToInteger(td.getText()));
+							break;
+						case 1: 
+							leadingData.append("name", translateService.translate(TranslateDataType.STALION, td.getText(), false));
+							break;
+						case 2: 
+							leadingData.append("child_count", documentUtil.convertToInteger(td.getText()));
+							break;
+						case 3: 
+							leadingData.append("winner_count", documentUtil.convertToInteger(td.getText()));
+							break;
+						case 4: 
+							leadingData.append("race_count", documentUtil.convertToInteger(td.getText()));
+							break;
+						case 5: 
+							leadingData.append("race_wins", documentUtil.convertToInteger(td.getText()));
+							break;
+						case 6: 
+							leadingData.append("biggame_count", documentUtil.convertToInteger(td.getText()));
+							break;
+						case 7: 
+							leadingData.append("biggame_win", documentUtil.convertToInteger(td.getText()));
+							break;
+						case 8: 
+							leadingData.append("special_count", documentUtil.convertToInteger(td.getText()));
+							break;
+						case 9 : 
+							leadingData.append("special_win", documentUtil.convertToInteger(td.getText()));
+							break;
+						case 10: 
+							leadingData.append("normal_count", documentUtil.convertToInteger(td.getText()));
+							break;
+						case 11: 
+							leadingData.append("normal_win", documentUtil.convertToInteger(td.getText()));
+							break;
+						case 12: 
+							leadingData.append("turf_count", documentUtil.convertToInteger(td.getText()));
+							break;
+						case 13: 
+							leadingData.append("turf_win", documentUtil.convertToInteger(td.getText()));
+							break;
+						case 14: 
+							leadingData.append("dirt_count", documentUtil.convertToInteger(td.getText()));
+							break;
+						case 15: 
+							leadingData.append("dirt_win", documentUtil.convertToInteger(td.getText()));
+							break;
+						case 16:
+							leadingData.append("win_ratio", (double) documentUtil.convertToInteger(td.getText()) / 10);
+							break;
+						case 17:
+							leadingData.append("aei", documentUtil.convertToDouble(td.getText()));
+							break;
+						case 18:
+							leadingData.append("earnings", documentUtil.convertToDouble(td.getText()));
+							break;
+						case 19:
+							leadingData.append("turf_distance", documentUtil.convertToDouble(td.getText()));
+							break;
+						case 20:
+							leadingData.append("dirt_distance", documentUtil.convertToDouble(td.getText()));
 							break;
 						default: 
 							break;
