@@ -12,6 +12,14 @@ public class CommonUtil {
         }
     }
 	
+	public long convertToLong(String str) {
+        try {
+            return Long.parseLong(str.replaceAll("[^0-9\\-\\+]", ""));
+        } catch (NumberFormatException e) {
+            return 0;
+        }
+    }
+	
 	public double convertToDouble(String str) {
         try {
             return Double.parseDouble(str.replaceAll("[^0-9\\.\\-\\+]", ""));
@@ -30,5 +38,29 @@ public class CommonUtil {
 	
 	public String removeMark(String str) {
 		return str.replace("★", "").replace("△", "").replace("▲", "").replace("☆", "").replace("◇", "");
+	}
+	
+	public int priceToInteger(String price) {
+		int result = 0;
+		int okuIndex = price.indexOf("億");
+		if(okuIndex > -1) {
+			int oku = convertToInteger(price.substring(0, okuIndex));
+			result += oku * 10000;
+			price = price.substring(okuIndex + 1, price.length() - 1);
+		}
+		int banIndex = price.indexOf("万");
+		if(banIndex > -1) {
+			int ban = convertToInteger(price.substring(0, banIndex));
+			result += ban;
+		}
+		/*
+		String[] parts = price.split("[億万]");
+		for(String part : parts) {
+			if (part.isEmpty()) continue;
+			if(part.endsWith("億")) result += convertToInteger(part) * 10000;
+			if(part.endsWith("万")) result += convertToInteger(part);
+		}
+		*/
+		return result;
 	}
 }

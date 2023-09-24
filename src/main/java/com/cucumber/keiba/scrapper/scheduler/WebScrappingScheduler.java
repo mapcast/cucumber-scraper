@@ -386,7 +386,7 @@ public class WebScrappingScheduler {
     						.replace("万下", "만엔 이하"));
         				break;
         			case 5:
-        				if(raceDataLine2Spans.get(i).getText().contains("牝")) document.append("lady_only", true);
+        				if(raceDataLine2Spans.get(i).getText().contains("牝") && !raceDataLine2Spans.get(i).getText().contains("牡")) document.append("lady_only", true);
         				else document.append("lady_only", false);
         				break;
         			case 8: 
@@ -442,12 +442,6 @@ public class WebScrappingScheduler {
             					horse = documentUtil.replaceOrAddElement(horse, "original_name", horseNameString);
             				Optional<Document> translatedDataWrapped = translateService.checkTranslateDataExist(TranslateDataType.HORSE, horseNameString);
             				if(translatedDataWrapped.isPresent()) {
-            					Document translateData = translatedDataWrapped.get();
-            					if(translateData.getBoolean("translated_by_machine")) {
-            						horse = documentUtil.replaceOrAddElement(horse, "translated_by_machine", true);
-            					} else {
-            						horse = documentUtil.replaceOrAddElement(horse, "translated_by_machine", false);
-            					}
             					horse = documentUtil.replaceOrAddElement(horse, "translated_name", translatedDataWrapped.get().getString("translated"));
             					listHorse.append("translated_name",  translatedDataWrapped.get().getString("translated"));
             				} else {
@@ -462,7 +456,6 @@ public class WebScrappingScheduler {
                 					//기계번역 데이터는 미번역 데이터로 취급합니다.
                 					translateService.insertUntranslateData(TranslateDataType.HORSE, horseNameString);
                 					horse = documentUtil.replaceOrAddElement(horse, "translated_name", translated);
-                					horse = documentUtil.replaceOrAddElement(horse, "translated_by_machine", true);
                 					listHorse.append("translated_name",  translated);
                 				} catch(Exception e) {
                 					log.info(e.toString());
@@ -568,7 +561,7 @@ public class WebScrappingScheduler {
 		}
 	}
 	
-	@Scheduled(cron = "0 40 18 * * *")
+	@Scheduled(cron = "0 30 18 * * *")
 	public void syncNextDayRaces() {
 		String driverName = "nextDayRaceDriver";
 		if(!scrapperUtil.isDriverIsRunning(driverName)) {
@@ -869,14 +862,17 @@ public class WebScrappingScheduler {
             		} else {
             			horseData = documentUtil.replaceOrAddElement(horseData, "sale_price", salePriceString.replace("億", "억").replace("万円", "만엔")); 
             		}
+            		horseData.append("sale_price_long", documentUtil.priceToInteger(salePriceString));
             		
             	} else if(header.equals("獲得賞金")) {
             		String[] earnings = horseProp.findElement(By.cssSelector("td")).getText().split("/");
             		for(String earning : earnings) {
                     	if(earning.contains("(中央)")) {
                     		horseData = documentUtil.replaceOrAddElement(horseData, "jra_price", earning.replace("億", "억 ").replace("万円", "만 엔").replace(" (中央)", "")); 
+                    		horseData.append("jra_price_long", documentUtil.priceToInteger(earning));
                     	} else if(earning.contains("(地方)")) {
                     		horseData = documentUtil.replaceOrAddElement(horseData, "local_price", earning.replace("億", "억 ").replace("万円", "만 엔").replace(" (地方)", "")); 
+                    		horseData.append("local_price_long", documentUtil.priceToInteger(earning));
                     	}
                     }
             	} else if(header.equals("通算成績")) {
@@ -885,6 +881,11 @@ public class WebScrappingScheduler {
                     horseData = documentUtil.replaceOrAddElement(horseData, "arrivals", records[1].trim()); 
             	}
             }
+            
+            List<WebElement> bloodlineTable = driver.findElements(By.cssSelector(".blood_table tr"));
+            horseData.append("father", bloodlineTable.get(0).findElements(By.cssSelector("td")).get(0).findElements(By.cssSelector("a")).get(0).getText());
+            horseData.append("mother", bloodlineTable.get(2).findElements(By.cssSelector("td")).get(0).findElements(By.cssSelector("a")).get(0).getText());
+            horseData.append("bms", bloodlineTable.get(2).findElements(By.cssSelector("td")).get(1).findElements(By.cssSelector("a")).get(0).getText());
             
             //출주 기록
             List<Document> raceResults = new ArrayList<>();
@@ -994,16 +995,21 @@ public class WebScrappingScheduler {
                 raceResults.add(raceResult);
             }
             horseData = documentUtil.replaceOrAddElement(horseData, "race_results", raceResults);
-            if(!horseService.isBloodlineExist(horseData.getString("horse_id")) || !horseData.containsKey("bloodline_male_1")) {
+            if(!horseService.isBloodlineExist(horseData.getString("horse_id"))) {
             	//혈통표
 	            driver.navigate().to("https://db.netkeiba.com/horse/ped/" + horseData.getString("original_id"));
 	            Thread.sleep(500);
+	            
 	            List<WebElement> bloodLine = driver.findElements(By.cssSelector(".blood_table tr"));
 	            //부계 혈통
-	            horseData = documentUtil.replaceOrAddElement(horseData, "bloodline_male_1", //부
+	            /*
+	            horseData = documentUtil.replaceOrAddElement(horseData, "father", //부
 	            	translateService.translateJapaneseOnly(TranslateDataType.STALION, documentUtil.cutBeforePar(bloodLine.get(0).findElements(By.cssSelector("td")).get(0).findElements(By.cssSelector("a")).get(0).getText())));
-	            horseData = documentUtil.replaceOrAddElement(horseData, "bloodline_female_1", //모
+	            horseData = documentUtil.replaceOrAddElement(horseData, "mother", //모
 	            	translateService.translateJapaneseOnly(TranslateDataType.MARE, documentUtil.cutBeforePar(bloodLine.get(16).findElements(By.cssSelector("td")).get(0).findElements(By.cssSelector("a")).get(0).getText())));
+	            horseData = documentUtil.replaceOrAddElement(horseData, "bms", //모부
+		            	translateService.translateJapaneseOnly(TranslateDataType.STALION, documentUtil.cutBeforePar(bloodLine.get(16).findElements(By.cssSelector("td")).get(1).findElements(By.cssSelector("a")).get(0).getText())));
+	            */
 	            Document bloodlines = documentUtil.scrapBloodLineDetail(bloodLine, translateService, documentUtil);
 	            bloodlines.append("horse_id", horseData.get("horse_id"));
 	            horseService.saveBloodLine(bloodlines);
@@ -1102,7 +1108,7 @@ public class WebScrappingScheduler {
 				Document horseData = raceEndedHorseDatas.next();
 				try {
 		        	driver.navigate().to("https://db.netkeiba.com/horse/" + horseData.getString("original_id"));
-		            Thread.sleep(500); //브라우저 로딩될때까지 잠시 기다린다.
+		            //Thread.sleep(500); //브라우저 로딩될때까지 잠시 기다린다.
 		            scrapHorseData(driver, horseData, true);
 		        } catch (Exception e) {
 		            e.printStackTrace();
@@ -1632,7 +1638,7 @@ public class WebScrappingScheduler {
 	@Bean
     public ThreadPoolTaskScheduler taskScheduler() {
         ThreadPoolTaskScheduler taskScheduler = new ThreadPoolTaskScheduler();
-        taskScheduler.setPoolSize(6); // 스레드 풀 크기 설정
+        taskScheduler.setPoolSize(5); // 스레드 풀 크기 설정
         taskScheduler.setThreadNamePrefix("task-");
         return taskScheduler;
     }
@@ -1640,7 +1646,7 @@ public class WebScrappingScheduler {
     @Bean
     public TaskSchedulerCustomizer taskSchedulerCustomizer(ThreadPoolTaskScheduler taskScheduler) {
         return taskScheduler1 -> {
-            taskScheduler1.setPoolSize(6); // 스레드 풀 크기 설정
+            taskScheduler1.setPoolSize(5); // 스레드 풀 크기 설정
             taskScheduler1.setThreadNamePrefix("task-");
         };
     }
