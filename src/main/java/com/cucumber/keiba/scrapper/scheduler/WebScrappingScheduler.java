@@ -528,7 +528,7 @@ public class WebScrappingScheduler {
 	public void syncNextWeekRaces() {
 		String driverName = "nextWeekRaceDriver";
 		if(!scrapperUtil.isDriverIsRunning(driverName)) {
-			//경기 하루 전날 데이터 스크래핑
+			//경기 일주일 전 데이터 스크래핑
 			LocalDate now = LocalDate.now();
 			now = now.plusDays(6);
 			//WebDriver driver = scrapperUtil.getChromeDriver();
