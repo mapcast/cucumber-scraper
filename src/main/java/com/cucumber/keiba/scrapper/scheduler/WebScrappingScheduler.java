@@ -888,10 +888,10 @@ public class WebScrappingScheduler {
             				bloodlineTable.get(0).findElements(By.cssSelector("td")).get(0).findElements(By.cssSelector("a")).get(0).getText()));
             horseData.append("mother",
             		translateService.translateJapaneseOnly(TranslateDataType.MARE, 
-            		bloodlineTable.get(2).findElements(By.cssSelector("td")).get(0).findElements(By.cssSelector("a")).get(0).getText()));
+            				bloodlineTable.get(2).findElements(By.cssSelector("td")).get(0).findElements(By.cssSelector("a")).get(0).getText()));
             horseData.append("bms",
             		translateService.translateJapaneseOnly(TranslateDataType.STALION, 
-            		bloodlineTable.get(2).findElements(By.cssSelector("td")).get(1).findElements(By.cssSelector("a")).get(0).getText()));
+            				bloodlineTable.get(2).findElements(By.cssSelector("td")).get(1).findElements(By.cssSelector("a")).get(0).getText()));
             
             //출주 기록
             List<Document> raceResults = new ArrayList<>();
