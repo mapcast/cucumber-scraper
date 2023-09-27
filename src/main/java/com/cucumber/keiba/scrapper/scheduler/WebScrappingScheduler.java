@@ -883,9 +883,15 @@ public class WebScrappingScheduler {
             }
             
             List<WebElement> bloodlineTable = driver.findElements(By.cssSelector(".blood_table tr"));
-            horseData.append("father", bloodlineTable.get(0).findElements(By.cssSelector("td")).get(0).findElements(By.cssSelector("a")).get(0).getText());
-            horseData.append("mother", bloodlineTable.get(2).findElements(By.cssSelector("td")).get(0).findElements(By.cssSelector("a")).get(0).getText());
-            horseData.append("bms", bloodlineTable.get(2).findElements(By.cssSelector("td")).get(1).findElements(By.cssSelector("a")).get(0).getText());
+            horseData.append("father", 
+            		translateService.translateJapaneseOnly(TranslateDataType.STALION, 
+            				bloodlineTable.get(0).findElements(By.cssSelector("td")).get(0).findElements(By.cssSelector("a")).get(0).getText()));
+            horseData.append("mother",
+            		translateService.translateJapaneseOnly(TranslateDataType.MARE, 
+            		bloodlineTable.get(2).findElements(By.cssSelector("td")).get(0).findElements(By.cssSelector("a")).get(0).getText()));
+            horseData.append("bms",
+            		translateService.translateJapaneseOnly(TranslateDataType.STALION, 
+            		bloodlineTable.get(2).findElements(By.cssSelector("td")).get(1).findElements(By.cssSelector("a")).get(0).getText()));
             
             //출주 기록
             List<Document> raceResults = new ArrayList<>();
