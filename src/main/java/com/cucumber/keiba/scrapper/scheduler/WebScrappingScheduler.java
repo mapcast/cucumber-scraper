@@ -321,23 +321,48 @@ public class WebScrappingScheduler {
         		String gradeIconClasses = raceNameAndGrade.findElement(By.cssSelector("span")).getAttribute("class");
         		if(gradeIconClasses.contains("Icon_GradeType18")) {
         			document = documentUtil.replaceOrAddElement(document, "grade", RaceGrade.ONE);
+        			document.append("grade_number", 2);
             	} else if(gradeIconClasses.contains("Icon_GradeType17")) {
             		document = documentUtil.replaceOrAddElement(document, "grade", RaceGrade.TWO);
+            		document.append("grade_number", 3);
             	} else if(gradeIconClasses.contains("Icon_GradeType16")) {
             		document = documentUtil.replaceOrAddElement(document, "grade", RaceGrade.THREE);
+            		document.append("grade_number", 4);
             	} else if(gradeIconClasses.contains("Icon_GradeType15")) {
             		document = documentUtil.replaceOrAddElement(document, "grade", RaceGrade.L);
+            		document.append("grade_number", 5);
             	} else if(gradeIconClasses.contains("Icon_GradeType5")) {
             		document = documentUtil.replaceOrAddElement(document, "grade", RaceGrade.OP);
+            		document.append("grade_number", 6);
             	} else if(gradeIconClasses.contains("Icon_GradeType3") || gradeIconClasses.contains("Icon_GradeType12")) {
             		document = documentUtil.replaceOrAddElement(document, "grade", RaceGrade.G3);
+            		document.append("grade_number", 7);
             	} else if(gradeIconClasses.contains("Icon_GradeType2") || gradeIconClasses.contains("Icon_GradeType11")) {
             		document = documentUtil.replaceOrAddElement(document, "grade", RaceGrade.G2);
+            		document.append("grade_number", 8);
             	} else if(gradeIconClasses.contains("Icon_GradeType1") || gradeIconClasses.contains("Icon_GradeType10")) {
             		document = documentUtil.replaceOrAddElement(document, "grade", RaceGrade.G1);
+            		document.append("grade_number", 9);
             	} else {
             		document = documentUtil.replaceOrAddElement(document, "grade", RaceGrade.NONE);
+            		document.append("grade_number", 1);
             	}
+        	} else {
+        		
+        		
+        		if(document.getString("name").contains("1승 클래스")) {
+        			document.append("grade", RaceGrade.ONE);
+            		document.append("grade_number", 2);
+        		} else if(document.getString("name").contains("2승 클래스")) {
+        			document.append("grade", RaceGrade.TWO);
+            		document.append("grade_number", 3);
+        		} else if(document.getString("name").contains("3승 클래스")) {
+        			document.append("grade", RaceGrade.THREE);
+            		document.append("grade_number", 4);
+        		} else {
+        			document.append("grade", RaceGrade.NONE);
+            		document.append("grade_number", 1);
+        		}
         	}
         	
         	WebElement raceDataLine1 = driver.findElement(By.cssSelector(".RaceData01"));
@@ -362,6 +387,9 @@ public class WebScrappingScheduler {
         	document = documentUtil.replaceOrAddElement(document, "track", 
         			translateService.translate(TranslateDataType.TRACK, raceSpecs.replaceAll("[0-9]", "").replace("m", ""), false));
         	document = documentUtil.replaceOrAddElement(document, "distance", documentUtil.convertToInteger(raceSpecs.replaceAll("[^0-9]", "")));
+        	if(document.getString("track").equals("잔디")) document.append("track_number", 1);
+        	else if(document.getString("track").equals("더트")) document.append("track_number", 2);
+        	else if(document.getString("track").equals("장애물")) document.append("track_number", 3);
         	
         	List<WebElement> raceDataLine2Spans = driver.findElements(By.cssSelector(".RaceData02 span"));
         	for(int i = 0; i < raceDataLine2Spans.size(); i++) {
@@ -561,7 +589,7 @@ public class WebScrappingScheduler {
 		}
 	}
 	
-	@Scheduled(cron = "0 30 18 * * *")
+	@Scheduled(cron = "0 41 21 * * *")
 	public void syncNextDayRaces() {
 		String driverName = "nextDayRaceDriver";
 		if(!scrapperUtil.isDriverIsRunning(driverName)) {
@@ -656,6 +684,11 @@ public class WebScrappingScheduler {
 		        		} else if(raceData.contains("馬場:")) {
 		        			endedRace = documentUtil.replaceOrAddElement(endedRace, "condition", 
 		        					translateService.translate(TranslateDataType.CONDITION, raceData.replace("馬場:", ""), false));
+		        			
+		        			if(endedRace.getString("condition").equals("양마장")) endedRace.append("condition_number", 1);
+		        			else if(endedRace.getString("condition").equals("약중마장")) endedRace.append("condition_number", 2);
+		        			else if(endedRace.getString("condition").equals("중마장")) endedRace.append("condition_number", 3);
+		        			else if(endedRace.getString("condition").equals("불량마장")) endedRace.append("condition_number", 4);
 		        		}
 		        	}
 		        	
@@ -815,14 +848,22 @@ public class WebScrappingScheduler {
             if(horseTitle.findElements(By.cssSelector(".eng_name a")).size() > 0)
             	horseData = documentUtil.replaceOrAddElement(horseData, "english_name", horseTitle.findElement(By.cssSelector(".eng_name a")).getText().trim());
             String[] horseBaseDatas = horseTitle.findElement(By.cssSelector(".txt_01")).getText().split("　");
-			horseData = documentUtil.replaceOrAddElement(horseData, "gender", horseBaseDatas[1].trim().substring(0, 1).replace("牡", "숫말").replace("牝", "암말").replace("騸", "거세마").replace("セ", "거세마"));
-			String ageString = horseBaseDatas[1].trim().substring(1);
-			horseData = documentUtil.replaceOrAddElement(horseData, "age", documentUtil.convertToInteger(ageString.replace("歳", "세")));
-			if(horseBaseDatas.length > 2) {
-				horseData = documentUtil.replaceOrAddElement(horseData, "color", 
-						translateService.translate(TranslateDataType.COLOR, horseBaseDatas[2], true));
-			}
-			
+            
+            for(String horseBaseData : horseBaseDatas) {
+            	if(horseBaseData.contains("歳")) {
+            		if(horseBaseData.contains("牡")) {
+            			horseData.append("gender", "숫말");
+            		} else if(horseBaseData.contains("牝")) {
+            			horseData.append("gender", "암말");
+            		} else if(horseBaseData.contains("騸") || horseBaseData.contains("セ")) {
+            			horseData.append("gender", "거세마");
+            		}
+            		horseData.append("age", documentUtil.convertToInteger(horseBaseData));
+            	}
+            	if(horseBaseData.contains("毛")) {
+            		horseData.append("color", translateService.translate(TranslateDataType.COLOR, horseBaseData, true));
+            	}
+            }
             
             List<WebElement> horseProps = driver.findElements(By.cssSelector(".db_prof_table tbody tr"));
             for(WebElement horseProp : horseProps) {
@@ -1223,7 +1264,7 @@ public class WebScrappingScheduler {
 	public void leadingScheduler() {
 		//매주 월요일 밤에 실행
 		LocalDateTime now = LocalDateTime.now();
-		if(now.getDayOfWeek().equals(DayOfWeek.MONDAY)) {
+		if(now.getDayOfWeek().equals(DayOfWeek.FRIDAY)) {
 			String driverName = "leadingScrapDriver";
 			WebDriver driver = scrapperUtil.getEdgeDriver();
 			driver.get("https://db.netkeiba.com/?pid=jockey_leading");

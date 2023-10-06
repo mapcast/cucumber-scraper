@@ -62,6 +62,7 @@ public class DocumentUtil extends CommonUtil {
 				.replace("鹿毛", "갈색(카게)")
 				.replace("栗毛", "밤색(쿠리게)")
 				.replace("芦毛", "회색(아시게)")
+				.replace("青毛", "검은색(아오게)")
 				.replace("白毛", "백색(시로게)");
 	}
 	

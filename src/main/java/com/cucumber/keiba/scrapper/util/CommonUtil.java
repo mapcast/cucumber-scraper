@@ -53,14 +53,6 @@ public class CommonUtil {
 			int ban = convertToInteger(price.substring(0, banIndex));
 			result += ban;
 		}
-		/*
-		String[] parts = price.split("[億万]");
-		for(String part : parts) {
-			if (part.isEmpty()) continue;
-			if(part.endsWith("億")) result += convertToInteger(part) * 10000;
-			if(part.endsWith("万")) result += convertToInteger(part);
-		}
-		*/
 		return result;
 	}
 }
