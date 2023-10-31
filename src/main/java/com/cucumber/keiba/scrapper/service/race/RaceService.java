@@ -1,5 +1,6 @@
 package com.cucumber.keiba.scrapper.service.race;
 
+import java.util.Arrays;
 import java.util.Map;
 import java.util.Optional;
 
@@ -10,6 +11,7 @@ import org.springframework.stereotype.Service;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoCursor;
 import com.mongodb.client.MongoDatabase;
+import com.mongodb.client.model.Aggregates;
 import com.mongodb.client.model.Sorts;
 import com.mongodb.client.result.InsertOneResult;
 
@@ -49,6 +51,19 @@ public class RaceService {
 		return collection.find(query).cursor();
 	}
 	
+	public MongoCursor<Document> get20RequestRaces(Document query) {
+		MongoCollection<Document> collection = mongoDatabase.getCollection("race_datas");
+		return collection.aggregate(Arrays.asList(
+			Aggregates.match(query),
+			Aggregates.limit(20)
+		)).cursor();
+	}
+	
+	public Document getFirstDocByDocumentQuery(Document query) {
+		MongoCollection<Document> collection = mongoDatabase.getCollection("race_datas");
+		return collection.find(query).first();
+	}
+	
 	public boolean saveDocs(Document document) {
 		MongoCollection<Document> collection = mongoDatabase.getCollection("race_datas");
 		Document search = new Document();
@@ -62,9 +77,6 @@ public class RaceService {
 			return true;
 		}
 	}
-	
-	
-
 	
 	public boolean saveSchedule(Document document) {
 		MongoCollection<Document> collection = mongoDatabase.getCollection("schedule_datas");
