@@ -1,11 +1,9 @@
 package com.cucumber.keiba.scrapper.scheduler;
 
 import java.net.URL;
-import java.text.SimpleDateFormat;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -35,22 +33,18 @@ import com.cucumber.keiba.scrapper.dto.datas.TranslateDto;
 import com.cucumber.keiba.scrapper.enums.RaceGrade;
 import com.cucumber.keiba.scrapper.enums.RaceHost;
 import com.cucumber.keiba.scrapper.enums.TranslateDataType;
-import com.cucumber.keiba.scrapper.model.TranslateData;
 import com.cucumber.keiba.scrapper.service.horse.HorseService;
 import com.cucumber.keiba.scrapper.service.leading.LeadingService;
 import com.cucumber.keiba.scrapper.service.race.RaceService;
 import com.cucumber.keiba.scrapper.service.translate.TranslateService;
-import com.cucumber.keiba.scrapper.util.CommonUtil;
 import com.cucumber.keiba.scrapper.util.DocumentUtil;
 import com.cucumber.keiba.scrapper.util.WebScrapperUtil;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mongodb.client.MongoCursor;
-import com.mongodb.client.model.Filters;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.java.Log;
-import net.bytebuddy.implementation.bytecode.Throw;
 
 @Log
 @Component
@@ -74,6 +68,7 @@ public class WebScrappingScheduler {
 	
 	@Value("${translate.client-secret}")
 	private String translateClientSecret;
+	
 	private void parseUpcomingRaces(LocalDate now, List<String> raceLinks, WebDriver driver) throws Exception {
 		ObjectMapper objectMapper = new ObjectMapper();
 		RestTemplate restTemplate = new RestTemplate();
@@ -260,6 +255,7 @@ public class WebScrappingScheduler {
             					horse.append("horse_id", newUuid);
             					listHorse.append("horse_id", newUuid);
             				}
+            				listHorse.append("original_id", originalId);
             				
             				
             				String horseNameString = horseNameElement.getText().trim();
@@ -349,13 +345,13 @@ public class WebScrappingScheduler {
         }
 	}
 	
-	@Scheduled(cron = "0 56 22 * * *")
+	@Scheduled(cron = "0 46 4 * * *")
 	public void syncNextWeekRaces() {
 		String driverName = "nextWeekRaceDriver";
 		if(!scrapperUtil.isDriverIsRunning(driverName)) {
 			//경기 일주일 전 데이터 스크래핑
 			LocalDate now = LocalDate.now();
-			now = now.plusDays(5);
+			now = now.plusDays(7);
 			//WebDriver driver = scrapperUtil.getChromeDriver();
 			WebDriver driver = scrapperUtil.getEdgeDriver();
 			DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMMdd");
@@ -386,7 +382,7 @@ public class WebScrappingScheduler {
 		}
 	}
 	
-	@Scheduled(cron = "0 30 14 * * *")
+	@Scheduled(cron = "0 51 3 * * *")
 	public void syncNextDayRaces() {
 		String driverName = "nextDayRaceDriver";
 		if(!scrapperUtil.isDriverIsRunning(driverName)) {
@@ -495,10 +491,14 @@ public class WebScrappingScheduler {
         	//String startTime = raceDataLine1.getText();
         	String[] times = raceDataLine1.getText().substring(0, raceDataLine1.getText().indexOf("発走")).split(":");
         	if(times.length == 2) {
+        		String activedDate = driver.findElement(By.cssSelector("#RaceList_DateList")).findElement(By.cssSelector(".Active")).getText();
+        		String monthString = activedDate.substring(0, activedDate.indexOf("月"));
+        		String dayString = activedDate.substring(activedDate.indexOf("月") + 1, activedDate.indexOf("日"));
+        		
         		LocalDateTime startTime = LocalDateTime.now()
         			.withYear(documentUtil.convertToInteger(endedRace.getString("original_id").substring(0, 4)))
-        			.withMonth(documentUtil.convertToInteger(endedRace.getString("original_id").substring(4, 6)))
-        			.withDayOfMonth(documentUtil.convertToInteger(endedRace.getString("original_id").substring(6, 8)))
+        			.withMonth(documentUtil.convertToInteger(monthString))
+        			.withDayOfMonth(documentUtil.convertToInteger(dayString))
     				.withHour(Integer.parseInt(times[0]))
     				.withMinute(Integer.parseInt(times[1]))
     				.withSecond(0)
@@ -609,10 +609,12 @@ public class WebScrappingScheduler {
 	        				if(existingHorse.isPresent()) { 
 	        					horse = existingHorse.get();
 	        					listHorse.append("horse_id", horse.getString("horse_id"));
+	        					listHorse.append("original_id", originalId);
 	        				} else {
 	        					String newUuid = UUID.randomUUID().toString();
 	        					horse.append("horse_id", newUuid);
 	        					listHorse.append("horse_id", newUuid);
+	        					listHorse.append("original_id", originalId);
 	        				}
 	        				
 	        				String horseNameString = horseNameElement.getText().trim();
@@ -659,8 +661,7 @@ public class WebScrappingScheduler {
 	        				if(existingHorse.isPresent()) { 
 	        					listHorse.append("horse_id", existingHorse.get().getString("horse_id"));
 	        				} else {
-	        					String newUuid = UUID.randomUUID().toString();
-	        					listHorse.append("horse_id", newUuid);
+	        					listHorse.append("original_id", originalId);
 	        				}
 	        				String translated = translateService.translate(TranslateDataType.HORSE, horseNameElement.getText().trim(), false);
 	        				listHorse.append("translated_name",  translated);
@@ -775,7 +776,7 @@ public class WebScrappingScheduler {
 		}
 	}
 	
-	@Scheduled(cron = "0 0/5 * * * *")
+	@Scheduled(cron = "0 0/3 * * * *")
 	public void syncRequestedRaces() {
 		String driverName = "syncRequestedRacesDriver";
 		if(!scrapperUtil.isDriverIsRunning(driverName)) {
@@ -828,15 +829,18 @@ public class WebScrappingScheduler {
             
             for(String horseBaseData : horseBaseDatas) {
             	if(horseBaseData.contains("歳")) {
-            		if(horseBaseData.contains("牡")) {
-            			horseData.append("gender", "숫말");
-            		} else if(horseBaseData.contains("牝")) {
-            			horseData.append("gender", "암말");
-            		} else if(horseBaseData.contains("騸") || horseBaseData.contains("セ")) {
-            			horseData.append("gender", "거세마");
-            		}
             		horseData.append("age", documentUtil.convertToInteger(horseBaseData));
             	}
+            	if(horseBaseData.contains("抹消")) {
+            		horseData.append("age", 9999);
+            	}
+            	if(horseBaseData.contains("牡")) {
+        			horseData.append("gender", "숫말");
+        		} else if(horseBaseData.contains("牝")) {
+        			horseData.append("gender", "암말");
+        		} else if(horseBaseData.contains("騸") || horseBaseData.contains("セ")) {
+        			horseData.append("gender", "거세마");
+        		}
             	if(horseBaseData.contains("毛")) {
             		horseData.append("color", translateService.translate(TranslateDataType.COLOR, horseBaseData, true));
             	}
@@ -1132,7 +1136,7 @@ public class WebScrappingScheduler {
 	public void syncRaceEndedHorseDataDetail() {
 		String driverName = "raceEndedHorseDetailScrapDriver";
 		if(!scrapperUtil.isDriverIsRunning(driverName)) {
-			LocalDateTime searchTime = LocalDateTime.now().minusDays(2).withHour(0).withMinute(0).withSecond(0).withNano(0);
+			LocalDateTime searchTime = LocalDateTime.now().minusDays(3).withHour(0).withMinute(0).withSecond(0).withNano(0);
 			Date startSearchDate = Date.from(searchTime.atZone(ZoneOffset.UTC).toInstant());
 			
 			Document query = new Document("last_race_time", new Document("$lte", startSearchDate));
@@ -1158,7 +1162,7 @@ public class WebScrappingScheduler {
 		}
 	}
 	
-	@Scheduled(cron = "0 0/5 * * * *")
+	@Scheduled(cron = "0 0/3 * * * *")
 	public void syncRequestedHorses() {
 		String driverName = "syncRequestedHorsesDriver";
 		if(!scrapperUtil.isDriverIsRunning(driverName)) {
@@ -1186,7 +1190,7 @@ public class WebScrappingScheduler {
 		}
 	}
 	
-	@Scheduled(cron = "0 42 0 * * *")
+	@Scheduled(cron = "0 42 3 * * *")
 	public void scheduleScheduler() {
 		String driverName = "scheduleScrapDriver";
 		WebDriver driver = scrapperUtil.getEdgeDriver();
@@ -1263,11 +1267,11 @@ public class WebScrappingScheduler {
 	}
 	
 	
-	@Scheduled(cron = "0 0 21 * * *")
+	@Scheduled(cron = "0 12 20 * * *")
 	public void leadingScheduler() {
 		//매주 월요일 밤에 실행
 		LocalDateTime now = LocalDateTime.now();
-		if(now.getDayOfWeek().equals(DayOfWeek.TUESDAY)) {
+		if(now.getDayOfWeek().equals(DayOfWeek.MONDAY)) {
 			String driverName = "leadingScrapDriver";
 			WebDriver driver = scrapperUtil.getEdgeDriver();
 			driver.get("https://db.netkeiba.com/?pid=jockey_leading");
