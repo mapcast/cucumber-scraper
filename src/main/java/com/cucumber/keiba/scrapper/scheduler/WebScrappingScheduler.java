@@ -282,7 +282,7 @@ public class WebScrappingScheduler {
                 					log.info(e.toString());
                 				}
             				}
-            				horse = documentUtil.replaceOrAddElement(horse, "need_to_scrap", true);
+            				//horse = documentUtil.replaceOrAddElement(horse, "need_to_scrap", true);
             				horse = documentUtil.replaceOrAddElement(horse, "original_id", originalId);
             				horseService.saveDocs(horse);
             				break;
@@ -345,7 +345,7 @@ public class WebScrappingScheduler {
         }
 	}
 	
-	@Scheduled(cron = "0 46 4 * * *")
+	@Scheduled(cron = "0 55 4 * * *")
 	public void syncNextWeekRaces() {
 		String driverName = "nextWeekRaceDriver";
 		if(!scrapperUtil.isDriverIsRunning(driverName)) {
@@ -382,7 +382,7 @@ public class WebScrappingScheduler {
 		}
 	}
 	
-	@Scheduled(cron = "0 51 3 * * *")
+	@Scheduled(cron = "0 44 12 * * *")
 	public void syncNextDayRaces() {
 		String driverName = "nextDayRaceDriver";
 		if(!scrapperUtil.isDriverIsRunning(driverName)) {
@@ -1267,7 +1267,7 @@ public class WebScrappingScheduler {
 	}
 	
 	
-	@Scheduled(cron = "0 12 20 * * *")
+	@Scheduled(cron = "0 57 18 * * *")
 	public void leadingScheduler() {
 		//매주 월요일 밤에 실행
 		LocalDateTime now = LocalDateTime.now();
